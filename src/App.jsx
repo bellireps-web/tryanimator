@@ -1,4 +1,5 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
+import OnboardingView from "./OnboardingView.jsx";
 
 function LogoIcon() {
   return <img class="landing-logo-icon" src="/icon-animator.png" alt="" />;
@@ -27,23 +28,25 @@ function EditorView({ onBack }) {
     <div class={`editor-page ${sidebarVisible() ? "" : "editor-sidebar-hidden"}`}>
       <aside class="editor-sidebar" aria-label="Main navigation">
         <div class="editor-brand">
-          <button class="editor-back" onClick={onBack} aria-label="Back to landing">←</button>
+          <button class="editor-back" onClick={onBack} aria-label="Back to landing">⌂</button>
           <LogoIcon />
           <span>Animator</span>
         </div>
-        <button class="editor-hide" onClick={() => setSidebarVisible(false)} aria-label="Hide sidebar">←</button>
-        <div class="editor-section-title">Projects</div>
-        <button class={`editor-nav-item ${active() === "home" ? "active" : ""}`} onClick={() => setActive("home")}>◇ <span>Home</span></button>
-        <button class={`editor-nav-item ${active() === "projects" ? "active" : ""}`} onClick={() => setActive("projects")}>◇ <span>Projects</span></button>
-        <div class="editor-section-title editor-assets-title">Assets</div>
-        <button class={`editor-nav-item ${active() === "templates" ? "active" : ""}`} onClick={() => setActive("templates")}>▱ <span>Templates</span></button>
-        <button class={`editor-nav-item ${active() === "resources" ? "active" : ""}`} onClick={() => setActive("resources")}>◌ <span>Resources</span></button>
-        <button class={`editor-nav-item ${active() === "community" ? "active" : ""}`} onClick={() => setActive("community")}>♧ <span>Community</span></button>
-        <div class="editor-section-title editor-user-title">User</div>
-        <button class={`editor-nav-item ${active() === "user" ? "active" : ""}`} onClick={() => setActive("user")}>◇ <span>User</span></button>
-        <button class="editor-nav-item editor-settings" onClick={() => setActive("settings")}>◇ <span>Settings</span></button>
+        <button class="editor-hide" onClick={() => setSidebarVisible(false)} aria-label="Hide sidebar"><span class="sidebar-bars" /></button>
+        <div class="editor-sidebar-nav">
+          <div class="editor-section-title editor-principal-title">Principal</div>
+          <button class={`editor-nav-item ${active() === "home" ? "active" : ""}`} onClick={() => setActive("home")}>♢ <span>Home</span></button>
+          <button class={`editor-nav-item ${active() === "projects" ? "active" : ""}`} onClick={() => setActive("projects")}>♢ <span>Projects</span></button>
+          <div class="editor-section-title editor-assets-title">Assets</div>
+          <button class={`editor-nav-item ${active() === "templates" ? "active" : ""}`} onClick={() => setActive("templates")}>▱ <span>Templates</span></button>
+          <button class={`editor-nav-item ${active() === "resources" ? "active" : ""}`} onClick={() => setActive("resources")}>♧ <span>Resources</span></button>
+          <button class={`editor-nav-item ${active() === "community" ? "active" : ""}`} onClick={() => setActive("community")}>♧ <span>Community</span></button>
+          <div class="editor-section-title editor-user-title">User</div>
+          <button class={`editor-nav-item ${active() === "affiliates" ? "active" : ""}`} onClick={() => setActive("affiliates")}>♧ <span>Affiliates</span></button>
+          <button class="editor-nav-item editor-settings" onClick={() => setActive("settings")}>♢ <span>Settings</span></button>
+        </div>
       </aside>
-      {!sidebarVisible() && <button class="editor-show" onClick={() => setSidebarVisible(true)} aria-label="Show sidebar">→</button>}
+      {!sidebarVisible() && <button class="editor-show" onClick={() => setSidebarVisible(true)} aria-label="Show sidebar"><span class="sidebar-bars" /></button>}
 
       <main class="editor-main">
         <div class="editor-mode-pill"><span class="selected">Video</span><span>Audio</span><i></i><span>Motion</span></div>
@@ -73,8 +76,16 @@ export default function App() {
   onMount(() => window.addEventListener("hashchange", handleHashChange));
   onCleanup(() => window.removeEventListener("hashchange", handleHashChange));
 
+  // @codebuff TEMP-FOR-TESTING: onboarding always shows on Get started
+  const handleGetStarted = () => setPage("onboarding");
+  const finishOnboarding = () => {
+    localStorage.setItem("autoedit_onboarding_done", "1");
+    navigate("editor");
+  };
+
   return (
-    <Show when={page() === "editor"} fallback={
+    <Show when={page() === "onboarding"} fallback={
+      <Show when={page() === "editor"} fallback={
       <div class="landing-page">
         <header class="landing-header">
           <a class="landing-brand" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><LogoIcon /><span>Animator</span></a>
@@ -86,7 +97,7 @@ export default function App() {
         <main id="top" class="landing-main">
           <h1>The AI that edits your<br />videos in one click</h1>
           <ModeSwitch />
-          <a class="landing-cta" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }}>Get started for free</a>
+          <a class="landing-cta" href="#editor" onClick={(event) => { event.preventDefault(); handleGetStarted(); }}>Get started for free</a>
           <section class="landing-showcase" aria-label="Before and after video editing">
             <a class="landing-card" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor" />
             <img class="landing-arrow" src="/vector-6.svg" alt="" aria-hidden="true" />
@@ -96,6 +107,9 @@ export default function App() {
       </div>
     }>
       <EditorView onBack={() => navigate("landing")} />
+    </Show>
+    }>
+      <OnboardingView onDone={finishOnboarding} />
     </Show>
   );
 }
