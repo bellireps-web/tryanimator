@@ -1,6 +1,6 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import OnboardingView from "./OnboardingView.jsx";
-import { Home, Folder, LayoutTemplate, BookOpen, Users, CircleDollarSign, Settings } from "lucide-solid";
+import { Home, Folder, LayoutTemplate, BookOpen, Users, CircleDollarSign, Settings, Scissors, Film, WandSparkles } from "lucide-solid";
 
 function LogoIcon() {
   return <img class="landing-logo-icon" src="/icon-animator.png" alt="" />;
@@ -54,9 +54,9 @@ function EditorView({ onBack }) {
         <h1>What’s your next edit?</h1>
         <div class="editor-chatbox">
           <div class="editor-resource-cards">
-            <div><strong>⌁ <small>0</small></strong><span>Video for<br />edit</span></div>
-            <div><strong>▦ <small>0</small></strong><span>Assets</span></div>
-            <div><strong>◇ <small>0</small></strong><span>Styles</span></div>
+            <div><strong><Scissors /><small>0</small></strong><span>Video for<br />edit</span></div>
+            <div><strong><Film /><small>0</small></strong><span>Assets</span></div>
+            <div><strong><WandSparkles /><small>0</small></strong><span>Styles</span></div>
           </div>
           <textarea value={prompt()} onInput={(event) => setPrompt(event.currentTarget.value)} placeholder="Describe what you want im the de video edit" aria-label="Describe your video edit" />
           <div class="editor-toolbar"><button>Elements ▾</button><button>▯ 9:16</button><button>@</button><button class="editor-submit">Edit it ▶</button></div>
