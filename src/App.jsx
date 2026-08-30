@@ -1,6 +1,6 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import OnboardingView from "./OnboardingView.jsx";
-import { Home, Folder, LayoutTemplate, BookOpen, Users, User, Settings } from "lucide-solid";
+import { Home, Folder, LayoutTemplate, BookOpen, Users, CircleDollarSign, Settings } from "lucide-solid";
 
 function LogoIcon() {
   return <img class="landing-logo-icon" src="/icon-animator.png" alt="" />;
@@ -43,7 +43,7 @@ function EditorView({ onBack }) {
           <button class={`editor-nav-item ${active() === "resources" ? "active" : ""}`} onClick={() => setActive("resources")}><BookOpen /><span>Resources</span></button>
           <button class={`editor-nav-item ${active() === "community" ? "active" : ""}`} onClick={() => setActive("community")}><Users /><span>Community</span></button>
           <div class="editor-section-title editor-user-title">User</div>
-          <button class={`editor-nav-item ${active() === "affiliates" ? "active" : ""}`} onClick={() => setActive("affiliates")}><User /><span>Affiliates</span></button>
+          <button class={`editor-nav-item ${active() === "affiliates" ? "active" : ""}`} onClick={() => setActive("affiliates")}><CircleDollarSign /><span>Affiliates</span></button>
           <button class="editor-nav-item editor-settings" onClick={() => setActive("settings")}><Settings /><span>Settings</span></button>
         </div>
       </aside>
