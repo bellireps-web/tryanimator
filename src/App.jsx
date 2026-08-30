@@ -1,5 +1,6 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import OnboardingView from "./OnboardingView.jsx";
+import { Home, Folder, LayoutTemplate, BookOpen, Users, User, Settings } from "lucide-solid";
 
 function LogoIcon() {
   return <img class="landing-logo-icon" src="/icon-animator.png" alt="" />;
@@ -35,15 +36,15 @@ function EditorView({ onBack }) {
         <button class="editor-hide" onClick={() => setSidebarVisible(false)} aria-label="Hide sidebar"><span class="sidebar-bars" /></button>
         <div class="editor-sidebar-nav">
           <div class="editor-section-title editor-principal-title">Principal</div>
-          <button class={`editor-nav-item ${active() === "home" ? "active" : ""}`} onClick={() => setActive("home")}>♢ <span>Home</span></button>
-          <button class={`editor-nav-item ${active() === "projects" ? "active" : ""}`} onClick={() => setActive("projects")}>♢ <span>Projects</span></button>
+          <button class={`editor-nav-item ${active() === "home" ? "active" : ""}`} onClick={() => setActive("home")}><Home /><span>Home</span></button>
+          <button class={`editor-nav-item ${active() === "projects" ? "active" : ""}`} onClick={() => setActive("projects")}><Folder /><span>Projects</span></button>
           <div class="editor-section-title editor-assets-title">Assets</div>
-          <button class={`editor-nav-item ${active() === "templates" ? "active" : ""}`} onClick={() => setActive("templates")}>▱ <span>Templates</span></button>
-          <button class={`editor-nav-item ${active() === "resources" ? "active" : ""}`} onClick={() => setActive("resources")}>♧ <span>Resources</span></button>
-          <button class={`editor-nav-item ${active() === "community" ? "active" : ""}`} onClick={() => setActive("community")}>♧ <span>Community</span></button>
+          <button class={`editor-nav-item ${active() === "templates" ? "active" : ""}`} onClick={() => setActive("templates")}><LayoutTemplate /><span>Templates</span></button>
+          <button class={`editor-nav-item ${active() === "resources" ? "active" : ""}`} onClick={() => setActive("resources")}><BookOpen /><span>Resources</span></button>
+          <button class={`editor-nav-item ${active() === "community" ? "active" : ""}`} onClick={() => setActive("community")}><Users /><span>Community</span></button>
           <div class="editor-section-title editor-user-title">User</div>
-          <button class={`editor-nav-item ${active() === "affiliates" ? "active" : ""}`} onClick={() => setActive("affiliates")}>♧ <span>Affiliates</span></button>
-          <button class="editor-nav-item editor-settings" onClick={() => setActive("settings")}>♢ <span>Settings</span></button>
+          <button class={`editor-nav-item ${active() === "affiliates" ? "active" : ""}`} onClick={() => setActive("affiliates")}><User /><span>Affiliates</span></button>
+          <button class="editor-nav-item editor-settings" onClick={() => setActive("settings")}><Settings /><span>Settings</span></button>
         </div>
       </aside>
       {!sidebarVisible() && <button class="editor-show" onClick={() => setSidebarVisible(true)} aria-label="Show sidebar"><span class="sidebar-bars" /></button>}

@@ -9,6 +9,7 @@
     "preview": "vite preview --port 3000"
   },
   "dependencies": {
+    "lucide-solid": "^1.37.0",
     "solid-js": "^1.8.22"
   },
   "devDependencies": {
