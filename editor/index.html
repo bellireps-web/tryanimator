@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Animator promo (animator-promo)</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  body { margin: 0; background: #060511; color: #fff; font-family: Figtree, system-ui, sans-serif; }
+  #ap-root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #060511; }
+  .clip { position: absolute; inset: 0; }
+  #ap-title { display: grid; place-items: center; text-align: center; }
+  #ap-title .inner { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+  #ap-title img { width: 220px; height: 220px; }
+  #ap-title h1 { margin: 0; font-size: 120px; line-height: 1.05; }
+  #ap-title p { margin: 0; font-size: 44px; color: #A9A6C6; }
+  .ap-broll img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ap-cap { display: flex; align-items: flex-end; justify-content: center; }
+  .ap-cap span { display: block; max-width: 920px; margin-bottom: 300px; padding: 28px 40px; font-size: 52px; line-height: 1.25; font-weight: 600; text-align: center; background: rgba(6,5,17,.72); border-radius: 28px; }
+</style>
+</head>
+<body>
+  <div id="ap-root" data-composition-id="animator-promo" data-start="0" data-width="1080" data-height="1920" data-duration="26.4">
+    <section id="ap-title" class="clip" data-start="0" data-duration="2" data-track-index="1">
+      <div class="inner"><img id="ap-logo" src="media/logo.png" alt="Animator" /><h1>Animator</h1><p>The AI that edits in one click</p></div>
+    </section>
+    <div id="ap-broll-0" class="clip ap-broll" data-start="3.22" data-duration="3.01" data-track-index="0">
+      <img class="inner" src="media/broll-1.png" alt="" />
+    </div>
+    <div id="ap-broll-1" class="clip ap-broll" data-start="9.73" data-duration="3.5" data-track-index="0">
+      <img class="inner" src="media/broll-2.png" alt="" />
+    </div>
+    <div id="ap-broll-2" class="clip ap-broll" data-start="15.22" data-duration="3.23" data-track-index="0">
+      <img class="inner" src="media/broll-3.png" alt="" />
+    </div>
+    <div id="ap-cap-0" class="clip ap-cap" data-start="0.0" data-duration="3.22" data-track-index="5">
+      <span>Meet Animator, the AI that edits your videos in one click.</span>
+    </div>
+    <div id="ap-cap-1" class="clip ap-cap" data-start="3.22" data-duration="3.01" data-track-index="5">
+      <span>Drop in raw video, then just describe the edit you want.</span>
+    </div>
+    <div id="ap-cap-2" class="clip ap-cap" data-start="6.23" data-duration="3.5" data-track-index="5">
+      <span>Or go from a script or audio straight to a finished cut in Creator mode.</span>
+    </div>
+    <div id="ap-cap-3" class="clip ap-cap" data-start="9.73" data-duration="3.5" data-track-index="5">
+      <span>In Motion, give it a reference and it builds motion graphics in seconds.</span>
+    </div>
+    <div id="ap-cap-4" class="clip ap-cap" data-start="13.23" data-duration="1.99" data-track-index="5">
+      <span>Add images, video, and audio.</span>
+    </div>
+    <div id="ap-cap-5" class="clip ap-cap" data-start="15.22" data-duration="3.23" data-track-index="5">
+      <span>Layer styles, captions, zooms, transitions, and sound.</span>
+    </div>
+    <div id="ap-cap-6" class="clip ap-cap" data-start="18.45" data-duration="5.28" data-track-index="5">
+      <span>Frame it for any ratio, from 9x16 reels to 16x9, 1x1, or 4x3.</span>
+    </div>
+    <div id="ap-cap-7" class="clip ap-cap" data-start="23.73" data-duration="1.66" data-track-index="5">
+      <span>Animator, describe it.</span>
+    </div>
+    <div id="ap-cap-8" class="clip ap-cap" data-start="25.4" data-duration="1.0" data-track-index="5">
+      <span>Watch it edit.</span>
+    </div>
+    <audio id="ap-voice-0" src="media/voiceover.wav" data-start="0.0" data-duration="23.73" data-media-start="0.27" data-track-index="10"></audio>
+    <audio id="ap-voice-1" src="media/voiceover.wav" data-start="23.73" data-duration="2.67" data-media-start="24.33" data-track-index="10"></audio>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#ap-title .inner", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.1);
+    tl.fromTo("#ap-cap-0 span", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, 0.02);
+    tl.fromTo("#ap-cap-1 span", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, 3.24);
+    tl.fromTo("#ap-cap-2 span", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, 6.25);
+    tl.fromTo("#ap-cap-3 span", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, 9.75);
+    tl.fromTo("#ap-cap-4 span", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, 13.25);
+    tl.fromTo("#ap-cap-5 span", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, 15.24);
+    tl.fromTo("#ap-cap-6 span", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, 18.47);
+    tl.fromTo("#ap-cap-7 span", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, 23.75);
+    tl.fromTo("#ap-cap-8 span", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, 25.419999999999998);
+    tl.fromTo("#ap-broll-0 .inner", { scale: 1 }, { scale: 1.08, duration: 3.01, ease: "none" }, 3.22);
+    tl.fromTo("#ap-broll-1 .inner", { scale: 1 }, { scale: 1.08, duration: 3.5, ease: "none" }, 9.73);
+    tl.fromTo("#ap-broll-2 .inner", { scale: 1 }, { scale: 1.08, duration: 3.23, ease: "none" }, 15.22);
+    window.__timelines["animator-promo"] = tl;
+  </script>
+</body>
+</html>

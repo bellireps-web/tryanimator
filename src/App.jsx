@@ -1,13 +1,24 @@
 import { createSignal, onMount, onCleanup, createEffect, Show } from "solid-js";
 import OnboardingView from "./OnboardingView.jsx";
 import { DropdownMenu } from "@kobalte/core/dropdown-menu";
-import { Home, Folder, LayoutTemplate, BookOpen, Users, CircleDollarSign, Settings, Scissors, Film, WandSparkles, AudioLines, Clapperboard, PanelLeftClose, PanelLeftOpen, Play, AtSign, ChevronDown, Palette, Image, Music2, SlidersHorizontal, ZoomIn, Captions, Plus, Atom, Square, Check, X, Sparkles, SquarePlay, Pause } from "lucide-solid";
+import { createViewportObserver } from "@solid-primitives/intersection-observer";
+import { Home, Folder, LayoutTemplate, BookOpen, Users, CircleDollarSign, Settings, Scissors, Film, WandSparkles, AudioLines, Clapperboard, PanelLeftClose, PanelLeftOpen, Play, AtSign, ChevronDown, Palette, Image, Music2, SlidersHorizontal, ZoomIn, Captions, Plus, Atom, Square, Check, X, Sparkles, SquarePlay, Pause, Video } from "lucide-solid";
+import NewVideoView from "./NewVideoView.jsx";
+import LoadingView from "./LoadingView.jsx";
+import StudioEditorView from "./StudioEditorView.jsx";
 
 function LogoIcon() {
   return <img class="landing-logo-icon" src="/icon-animator.png" alt="" />;
 }
 function EnterIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 10 4 15l5 5" /><path d="M20 4v7a4 4 0 0 1-4 4H4" /></svg>;
+}
+
+const [addReveal] = createViewportObserver({ threshold: 0.18 });
+function reveal(el) {
+  addReveal(el, (entry) => {
+    if (entry.isIntersecting) el.classList.add("revealed");
+  });
 }
 
 function toggleMotionVideo(button) {
@@ -61,7 +72,7 @@ function ProjectsView({ onNewProject }) {
   );
 }
 
-function EditorView({ onBack }) {
+function EditorView({ onBack, onEditRequest }) {
   const [prompt, setPrompt] = createSignal("");
   const [active, setActive] = createSignal("home");
   const [sidebarVisible, setSidebarVisible] = createSignal(true);
@@ -91,6 +102,7 @@ function EditorView({ onBack }) {
   const addAsset = (event) => { const files = Array.from(event.currentTarget.files); if (!files.length) return; const added = files.map((file) => { const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "audio"; return { type, url: URL.createObjectURL(file) }; }); setAssets((prev) => [...prev, ...added]); event.currentTarget.value = ""; };
   const removeVideo = (video) => setVideos((prev) => prev.filter((v) => v.url !== video.url));
   const removeAsset = (asset) => setAssets((prev) => prev.filter((a) => a.url !== asset.url));
+  const submitEdit = () => { if (prompt().trim()) onEditRequest({ prompt: prompt().trim(), ratio: format() }); };
   createEffect(() => { document.body.style.overflow = (assetsOpen() || videoOpen() || stylesOpen()) ? "hidden" : ""; });
 
   return (
@@ -135,7 +147,7 @@ function EditorView({ onBack }) {
             <div class="editor-resource-button" onClick={() => setAssetsOpen(true)}><strong><Film /><small>0</small></strong><span>Assets</span></div>
             <div class="editor-resource-button" onClick={() => setStylesOpen(true)}><strong><WandSparkles /><small>0</small></strong><span>Styles</span></div>
           </div>
-          <textarea value={prompt()} onInput={(event) => setPrompt(event.currentTarget.value)} placeholder={editorMode() === "creator" ? "Describe what you want in your video" : editorMode() === "motion" ? "Describe what you want in your motion graphics" : "Describe what you want in your edit"} aria-label="Describe your edit" />
+          <textarea value={prompt()} onInput={(event) => setPrompt(event.currentTarget.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); submitEdit(); } }} placeholder={editorMode() === "creator" ? "Describe what you want in your video" : editorMode() === "motion" ? "Describe what you want in your motion graphics" : "Describe what you want in your edit"} aria-label="Describe your edit" />
           <div class="editor-toolbar-wrap" onClick={(event) => event.stopPropagation()}>
             <Show when={openMenu() === "elements"}>
               <div class="editor-floating-menu elements-menu elements-selection-menu" role="menu" aria-label="Edit elements">
@@ -149,7 +161,7 @@ function EditorView({ onBack }) {
                 {[["9:16", "ratio-9-16"], ["16:9", "ratio-16-9"], ["1:1", "ratio-1-1"], ["4:3", "ratio-4-3"]].map(([label, cls]) => <button class={`floating-menu-item ${format() === label ? "active" : ""}`} role="menuitemradio" aria-checked={format() === label} onClick={() => setFormat(label)}><span class={`ratio-rect ${cls}`} aria-hidden="true" /><span>{label}</span></button>)}
               </div>
             </Show>
-            <div class="editor-toolbar"><button class={`toolbar-elements ${openMenu() === "elements" ? "open" : ""}`} onClick={() => toggleMenu("elements")}>Elements <ChevronDown aria-hidden="true" /></button><button class="toolbar-format" onClick={() => toggleMenu("format")}><span class={`toolbar-format-rectangle ${format() === "16:9" ? "landscape" : format() === "1:1" ? "square" : format() === "4:3" ? "landscape" : ""}`} aria-hidden="true" /><span>{format()}</span></button><button class="toolbar-at" aria-label="Mention"><AtSign /></button><button class="editor-submit" disabled={!prompt().trim()}>{editorMode() === "editor" ? "Edit it" : "Create it"}<Play /></button></div>
+            <div class="editor-toolbar"><button class={`toolbar-elements ${openMenu() === "elements" ? "open" : ""}`} onClick={() => toggleMenu("elements")}>Elements <ChevronDown aria-hidden="true" /></button><button class="toolbar-format" onClick={() => toggleMenu("format")}><span class={`toolbar-format-rectangle ${format() === "16:9" ? "landscape" : format() === "1:1" ? "square" : format() === "4:3" ? "landscape" : ""}`} aria-hidden="true" /><span>{format()}</span></button><button class="toolbar-at" aria-label="Mention"><AtSign /></button><button class="editor-submit" disabled={!prompt().trim()} onClick={submitEdit}>{editorMode() === "editor" ? "Edit it" : "Create it"}<Play /></button></div>
           </div>
         </div>
         <div class="editor-beta">This is an early beta, so there may be errors</div>
@@ -200,7 +212,8 @@ function EditorView({ onBack }) {
 }
 
 export default function App() {
-  const [page, setPage] = createSignal(window.location.hash === "#editor" ? "editor" : "landing");
+  const [page, setPage] = createSignal("landing");
+  const [job, setJob] = createSignal({ prompt: "", ratio: "9:16" });
   const [landingMode, setLandingMode] = createSignal("editor");
   const [landingScrolled, setLandingScrolled] = createSignal(false);
   const navigate = (nextPage) => {
@@ -209,6 +222,7 @@ export default function App() {
   };
   const handleHashChange = () => setPage(window.location.hash === "#editor" ? "editor" : "landing");
   onMount(() => {
+    if (window.location.hash === "#editor") setPage("editor");
     window.addEventListener("hashchange", handleHashChange);
     const updateLandingScroll = () => setLandingScrolled(window.scrollY > 24);
     updateLandingScroll();
@@ -221,6 +235,7 @@ export default function App() {
 
   // @codebuff TEMP-FOR-TESTING: onboarding always shows on Get started
   const handleGetStarted = () => setPage("onboarding");
+  const startJob = (j) => { setJob(j); setPage("loading"); };
   const finishOnboarding = () => {
     localStorage.setItem("autoedit_onboarding_done", "1");
     navigate("editor");
@@ -229,6 +244,9 @@ export default function App() {
   return (
     <Show when={page() === "onboarding"} fallback={
       <Show when={page() === "editor"} fallback={
+      <Show when={page() === "newvideo"} fallback={
+      <Show when={page() === "loading"} fallback={
+      <Show when={page() === "studio"} fallback={
       <div class={`landing-page landing-page-${landingMode()}`}>
         <header class={`landing-header ${landingScrolled() ? "landing-header-scrolled" : ""}`}>
           <div class="landing-header-inner">
@@ -275,78 +293,109 @@ export default function App() {
           </section>
           <section class={`landing-features landing-features-${landingMode()}`} aria-label="Animator features">
             <div class="landing-features-row landing-features-row-1">
-              <div class="feature-card feature-learn">
-                <h2>Learn Your Style</h2>
-                <span class="feature-label">Structure</span>
-                <div class="learn-figure">
-                  <span class="learn-avatar" />
-                  <span class="learn-slot" />
-                  <span class="learn-tile" />
-                  <span class="learn-arrow learn-arrow-blue" />
-                  <span class="learn-arrow learn-arrow-white" />
-                  <span class="learn-caption">Captions</span>
-                  <span class="learn-broll">B-Roll</span>
-                  <span class="learn-rule" />
-                  <span class="learn-note learn-note-color">Add background<br />color</span>
-                  <span class="learn-note learn-note-roll">B-Roll from<br />assets</span>
-                </div>
-              </div>
-              <div class="feature-card feature-brand">
-                <h2>Consistent Brand</h2>
-                <span class="feature-label">Colors</span>
-                <div class="brand-swatches">
-                  <span class="brand-swatch brand-swatch-dark" />
-                  <span class="brand-swatch brand-swatch-blue" />
-                  <span class="brand-swatch brand-swatch-white" />
-                  <span class="brand-swatch brand-swatch-indigo" />
-                  <span class="brand-swatch brand-swatch-violet" />
-                </div>
-                <span class="feature-label brand-font-label">Font Text</span>
-                <span class="brand-font-name">Sansation Light</span>
-              </div>
-              <div class="feature-card feature-save">
-                <h2>Save Time</h2>
-                <div class="save-comparison-label"><span>With Animator</span><span>Without</span></div>
-                <div class="save-cols">
-                  <div class="save-col">
-                    <span class="save-title">Edit 3<br />Videos</span>
-                    <span class="save-clock save-clock-anim" />
-                    <span class="save-time">20min</span>
-                  </div>
-                  <div class="save-col">
-                    <span class="save-title">Edit 3<br />Videos</span>
-                    <span class="save-clock save-clock-manual" />
-                    <span class="save-time">4-5h</span>
+              <article class="feature-card" use:reveal>
+                <h2>Learn your editing style</h2>
+                <p class="feature-sub">Upload a video, review the storyboard, and approve captions, b-roll, split screens, and motion graphics.</p>
+                <div class="feature-visual feature-visual-learn">
+                  <div class="fg fg-learn-structure">
+                    <span class="fg-learn-panel">
+                      <span class="fg-learn-avatar" />
+                      <span class="fg-learn-body" />
+                      <span class="fg-learn-cap">Captions</span>
+                      <span class="fg-learn-rule" />
+                      <span class="fg-learn-broll">B-Roll</span>
+                    </span>
+                    <img class="fg-learn-squiggle" src="/vector-56.svg" alt="" aria-hidden="true" />
+                    <img class="fg-learn-arrow fg-learn-arrow-top" src="/arrow-15.svg" alt="" aria-hidden="true" />
+                    <img class="fg-learn-arrow fg-learn-arrow-bottom" src="/arrow-15.svg" alt="" aria-hidden="true" />
+                    <span class="fg-learn-callout fg-learn-callout-color">Add background color</span>
+                    <span class="fg-learn-callout fg-learn-callout-roll">B-Roll from assets</span>
                   </div>
                 </div>
-              </div>
+              </article>
+              <article class="feature-card" use:reveal>
+                <h2>Brand-consistent videos</h2>
+                <p class="feature-sub">Define your colors and fonts once and keep every caption, title, and motion graphic on-brand.</p>
+                <div class="feature-visual feature-visual-brand">
+                  <div class="fg fg-brand">
+                    <div class="fg-brand-head">
+                      <span class="fg-brand-title">Brand styles</span>
+                    </div>
+                    <div class="fg-brand-colors">
+                      <span class="fg-swatch fg-swatch-a"><i>Primary</i></span>
+                      <span class="fg-swatch fg-swatch-b"><i>Accent</i></span>
+                      <span class="fg-swatch fg-swatch-c"><i>Dark</i></span>
+                    </div>
+                    <div class="fg-brand-font">
+                      <span class="fg-font-aa">Aa</span>
+                      <span class="fg-font-meta"><b>Figtree</b><i>Titles, captions &amp; motion graphics</i></span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+              <article class="feature-card" use:reveal>
+                <h2>Save time on every edit</h2>
+                <p class="feature-sub">Go from hours of manual editing to minutes — capture, trim, and polish in one click.</p>
+                <div class="feature-visual feature-visual-save">
+                  <div class="fg fg-save">
+                    <div class="fg-brand-head"><span class="fg-brand-title">Edit 3 videos</span></div>
+                    <div class="fg-save-cols">
+                      <div class="fg-save-col fg-save-col-fast">
+                        <span class="fg-clock fg-clock-fast"><i /><i /></span>
+                        <span class="fg-save-label">20min</span>
+                        <span class="fg-save-sub">With Animator</span>
+                      </div>
+                      <div class="fg-save-vs">vs</div>
+                      <div class="fg-save-col fg-save-col-slow">
+                        <span class="fg-clock fg-clock-slow"><i /><i /></span>
+                        <span class="fg-save-label">4-5h</span>
+                        <span class="fg-save-sub">Without Animator</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
             </div>
             <div class="landing-features-row landing-features-row-2">
-              <div class="feature-card feature-plan">
-                <h2>First Plan, then Create</h2>
-                <div class="plan-panel">
-                  <div class="plan-row"><span class="plan-thumb plan-avatar" /><span class="plan-name">B-Rolls 1:</span></div>
-                  <div class="plan-row"><span class="plan-thumb plan-motion"><Atom /></span><span class="plan-name">Motion G:</span></div>
-                  <div class="plan-row"><span class="plan-thumb plan-avatar" /><span class="plan-name">B-Rolls 2:</span></div>
-                  <div class="plan-row"><span class="plan-thumb plan-avatar plan-caption"><span>Captions</span></span><span class="plan-name">Captions:</span></div>
-                  <span class="plan-accept">Accept <EnterIcon /></span>
+              <article class="feature-card" use:reveal>
+                <h2>Plan first, then create</h2>
+                <p class="feature-sub">Refine generated video insertions without rebuilding them manually in After Effects.</p>
+                <div class="feature-visual feature-visual-plan">
+                  <div class="fg fg-plan">
+                    <span class="fg-plan-row"><span class="fg-plan-thumb fg-plan-motion"><Video /></span><b>B-Rolls:</b></span>
+                    <span class="fg-plan-row"><span class="fg-plan-thumb fg-plan-motion"><Atom /></span><b>Motion Graphics:</b></span>
+                    <span class="fg-plan-row"><span class="fg-plan-thumb fg-plan-motion"><Captions /></span><b>Captions:</b></span>
+                    <span class="fg-accept">Accept</span>
+                  </div>
                 </div>
-              </div>
-              <div class="feature-card feature-grow">
+              </article>
+              <article class="feature-card" use:reveal>
                 <h2>Grow your brand</h2>
-                <div class="grow-figure">
-                  <span class="grow-arrow" />
-                  <span class="grow-avatar" />
-                  <span class="grow-follow grow-follow-100">100 Followers</span>
-                  <span class="grow-follow grow-follow-1m">1M Followers</span>
+                <p class="feature-sub">Animator gets faster and more accurate as you approve, reject, and adjust your edits.</p>
+                <div class="feature-visual feature-visual-grow">
+                  <div class="fg fg-grow">
+                    <span class="fg-grow-arrow" />
+                    <span class="fg-grow-avatar" />
+                    <span class="fg-grow-n fg-grow-n1">100 Followers</span>
+                    <span class="fg-grow-n fg-grow-n2">1M Followers</span>
+                  </div>
                 </div>
-              </div>
+              </article>
             </div>
           </section>
         </main>
       </div>
-    }>
-      <EditorView onBack={() => navigate("landing")} />
+      }>
+      <StudioEditorView job={job()} onNewVideo={() => setPage("newvideo")} onExport={() => navigate("editor")} />
+      </Show>
+      }>
+      <LoadingView ratio={job().ratio} onDone={() => setPage("studio")} />
+      </Show>
+      }>
+      <NewVideoView initial={job()} onSubmit={startJob} />
+      </Show>
+      }>
+      <EditorView onBack={() => navigate("landing")} onEditRequest={startJob} />
     </Show>
     }>
       <OnboardingView onDone={finishOnboarding} />

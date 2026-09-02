@@ -1,0 +1,125 @@
+{
+  "compositionId": "animator-promo",
+  "width": 1080,
+  "height": 1920,
+  "source": {
+    "transcript": "transcript.json",
+    "audio": "media/voiceover.wav"
+  },
+  "silenceMin": 0.3,
+  "cuts": [
+    {
+      "type": "trim-in",
+      "sourceStart": 0.0,
+      "sourceEnd": 0.27
+    },
+    {
+      "type": "silence",
+      "sourceStart": 24.0,
+      "sourceEnd": 24.33
+    }
+  ],
+  "trims": [
+    {
+      "type": "trim-in",
+      "sourceStart": 0.0,
+      "sourceEnd": 0.27
+    }
+  ],
+  "fillers": [],
+  "keptRanges": [
+    {
+      "sourceStart": 0.27,
+      "sourceEnd": 24.0
+    },
+    {
+      "sourceStart": 24.33,
+      "sourceEnd": 27.0
+    }
+  ],
+  "audioClips": [
+    {
+      "id": "ap-voice-0",
+      "src": "media/voiceover.wav",
+      "start": 0.0,
+      "duration": 23.73,
+      "mediaStart": 0.27
+    },
+    {
+      "id": "ap-voice-1",
+      "src": "media/voiceover.wav",
+      "start": 23.73,
+      "duration": 2.67,
+      "mediaStart": 24.33
+    }
+  ],
+  "captions": [
+    {
+      "text": "Meet Animator, the AI that edits your videos in one click.",
+      "t0": 0.0,
+      "t1": 3.22
+    },
+    {
+      "text": "Drop in raw video, then just describe the edit you want.",
+      "t0": 3.22,
+      "t1": 6.23
+    },
+    {
+      "text": "Or go from a script or audio straight to a finished cut in Creator mode.",
+      "t0": 6.23,
+      "t1": 9.73
+    },
+    {
+      "text": "In Motion, give it a reference and it builds motion graphics in seconds.",
+      "t0": 9.73,
+      "t1": 13.23
+    },
+    {
+      "text": "Add images, video, and audio.",
+      "t0": 13.23,
+      "t1": 15.22
+    },
+    {
+      "text": "Layer styles, captions, zooms, transitions, and sound.",
+      "t0": 15.22,
+      "t1": 18.45
+    },
+    {
+      "text": "Frame it for any ratio, from 9x16 reels to 16x9, 1x1, or 4x3.",
+      "t0": 18.45,
+      "t1": 23.73
+    },
+    {
+      "text": "Animator, describe it.",
+      "t0": 23.73,
+      "t1": 25.39
+    },
+    {
+      "text": "Watch it edit.",
+      "t0": 25.4,
+      "t1": 26.4
+    }
+  ],
+  "brolls": [
+    {
+      "id": "ap-broll-0",
+      "src": "media/broll-1.png",
+      "t0": 3.22,
+      "t1": 6.23
+    },
+    {
+      "id": "ap-broll-1",
+      "src": "media/broll-2.png",
+      "t0": 9.73,
+      "t1": 13.23
+    },
+    {
+      "id": "ap-broll-2",
+      "src": "media/broll-3.png",
+      "t0": 15.22,
+      "t1": 18.45
+    }
+  ],
+  "timelineDuration": 26.4,
+  "generatedBy": "editor/generate.py"
+}

@@ -1,5 +1,50 @@
 # Reglas de cambios del proyecto
 
+## Fix crash Loading (Kobalte Progress.Root undefined) — 2026-09-03
+
+- Causa raíz probada: bajo el bundler de dev (esbuild, ESM y CJS), `Progress.Root` llega `undefined` (`Root:undefined, Track:function` reproducido aquí empaquetando el import), y Solid casca con `reading 'name'` al renderizar `LoadingView`. En build (rollup) resolvía bien: por eso compilaba pero moría en dev.
+- Fix: fuera Kobalte de `LoadingView`; barra nativa `role=progressbar` + `aria-valuenow` con el mismo gradiente (además corrige un bug latente: el fill dependía de una var CSS de Kobalte y se veía siempre lleno). Sin dependencias nuevas, sin borrados.
+- `DropdownMenu` de la landing no afectado (otro chunk, renderiza bien).
+- Verificación: `npm run build` ✅. Requiere reinicio limpio del dev + pestaña nueva.
+
+## Loading tarjeta ratio + gradiente vivo — 2026-09-03
+
+- `LoadingView` rehecho: tarjeta con las proporciones del ratio elegido (16:9 640×360, 9:16 270×480, 1:1, 4:3), gradiente animado dentro (3 blobs radiales morados a la deriva + grano SVG + viñeta, según tus referencias Dreaming/Imaginando), pill de fase + % grande + "quedan ~Xs" en vivo.
+- Fases con datos reales de `plan.json` (nº silencios/captions/b-rolls; degradado elegante sin él). Progreso simulado ~12s hasta que exista el agente real; la barra fina de Kobalte se mantiene por accesibilidad.
+- Librerías buscadas: el consenso (componentes MIT tipo shadcn, volt/vortex-ui) implementa esto con CSS puro (blobs + blur + ruido SVG), sin runtime. Aplicado igual: cero dependencias nuevas, `prefers-reduced-motion` respeta estático.
+- Verificación: `npm run build` ✅. Sin probar en navegador (sandbox).
+
+## Restaura mock + fuera vista plan — 2026-09-03
+
+- `EditorView` + `ProjectsView` restaurados en `src/App.jsx` como página `editor` (sidebar, pill, título dinámico, chatbox con resource cards, toolbar Elements/ratio/@, modales, beta). Verificado por diff contra HEAD: idénticos salvo el cableado Enter/submit.
+- Único añadido funcional: `Edit it`/Enter del chatbox crea el job (prompt + ratio del toolbar) y va al loading → studio. `Export` del studio vuelve al mock.
+- Eliminados `src/HFEditorView.jsx` y `src/hf-editor.css` (vista plan). Se conserva `editor/` + `public/plan.json` + `public/poster.png` porque el studio los usa (transporte, captions, captura).
+- Verificación: `npm run build` ✅, cero referencias a HFEditorView.
+
+## Flujo Enter→carga→studio — 2026-09-03
+
+- Nuevas vistas independientes: `src/NewVideoView.jsx` (prompt + ratio 9:16/16:9/1:1/4:3, Enter envía), `src/LoadingView.jsx` (ratio elegido + `Progress` de Kobalte con gradiente 0→100% en ~3.6s, con cleanup), `src/StudioEditorView.jsx` (editor de tu spec) + `src/studio.css`. Páginas `newvideo`/`loading`/`studio` en `App`; el plan (`editor`) suma botón "Nuevo video".
+- Studio según spec: izquierda (← New Video, Upgrade to Plus, chat con +, ratio cíclico y send redondo, nota beta), derecha (Export → vista plan, ＋Capturar Frame descarga PNG real vía canvas con caption del frame, preview dimensionada por ratio, transporte play/pausa + seek + tiempos con datos de `plan.json`).
+- Librería para la carga: Kobalte `@kobalte/core/progress` (ya instalada, MIT) — sin dependencias nuevas. Ratio funcional: redimensiona el preview (479px de alto, ancho por ratio).
+- Verificación: `npm run build` ✅. `Progress.Root value/minValue/maxValue` confirmado en sus `.d.ts`. Sin probar en navegador (sandbox sin puertos): revisar transición loading→studio y captura en local.
+
+## Editor HyperFrames v0 (rebanada plan→composicion) — 2026-09-02
+
+- `opencut/` y `opencut-classic/` eliminados del repo (decisión del usuario; HyperFrames es el motor). Su contrato útil queda mapeado: `CommandManager.execute({command})` + comandos por dominio como referencia para la entrada única UI+agente. Recovery: `refs/tbh/recovery/before-opencut-removal/20260902T222456Z-43636`.
+- Nuevo proyecto `editor/`: `generate.py` (transcript.json → `plan.json` + `index.html`), `media/` (voz + 3 b-rolls + logo), `index.html` standalone 1080×1920 (~26.4s). Entrada única: UI y agente operan sobre `editor/plan.json` y regeneran con `python3 editor/generate.py` (`public/plan.json` es copia servida derivada).
+- Plan real medido: 1 silencio (24.0→24.33s), lead-trim 0.27s, 0 muletillas, 9 captions por frase, 3 b-rolls, voz en 2 clips pegados (recetas hard-cut/split/trim). 27.0s → 26.4s.
+- Nueva vista `src/HFEditorView.jsx` + `src/hf-editor.css` (componente independiente): revisa cortes (activar/desactivar con duración efectiva en vivo), captions, b-rolls, voz y comandos de render. Navegación interna restaurada (`landing`/`editor`/`onboarding`, `#editor`).
+- Verificación: `npm run build` ✅. Composición validada contra contrato (standalone sin template, root 1080×1920, 1 timeline pausada, audios con id, sin crossorigin/br/transform CSS). `npx hyperframes lint/check/preview/render` pendientes en máquina local (CLI no instalable en este sandbox).
+- Anula la rebanada anterior "Editor real (opencut-classic)": el redirect a :3100 ya no existe.
+
+## Editor real (opencut-classic) — 2026-09-02
+
+- El editor mock de SolidJS (`EditorView` + `ProjectsView` en `src/App.jsx`) se elimina. El editor real es `opencut-classic/apps/web` (Next.js + motor Rust/WASM), que se arranca aparte con `cd opencut-classic/apps/web && bun run dev -- -p 3100`. La landing SolidJS (`npm run dev`, :3000) se conserva intacta y enlaza al editor vía `EDITOR_URL` (`http://localhost:3100`).
+- Navegación: brand, nav, CTAs, `#editor` y fin de onboarding redirigen a `EDITOR_URL` con `window.location.href`. Ya no existe vista `editor` interna (`page` solo `landing`/`onboarding`).
+- Entrada única UI+agente en el editor real: `CommandManager` (`opencut-classic/apps/web/src/core/managers/commands.ts`) — `editor.command.execute({ command })` con historial undo/redo. La UI entra vía managers (`timeline-manager`, `media-manager`, etc.); el agente IA debe emitir los mismos `Command` (`src/commands/{timeline,media,scene,project}`), sin caminos paralelos. Pendiente: exponer esa entrada al agente (siguiente rebanada).
+- Verificación: `npm run build` ✅ (Vite, 25s). `bunx tsc --noEmit` en classic: 0 errores en app, 2 pre-existentes solo en `__tests__` (tipo `MediaTime`). `next dev`/`next build` no verificables en este sandbox (bloquea `listen`/puertos de Turbopack); pendiente correr el editor en máquina local.
+- CSS huérfano `.editor-*`/`.projects-*` en `src/index.css` pendiente de limpieza (rebanada aparte).
+
 ## Reglas obligatorias
 
 1. Antes de modificar una pantalla existente, conservar su estructura y estilos actuales.
