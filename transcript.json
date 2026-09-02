@@ -1,0 +1,407 @@
+[
+  {
+    "text": "Meet",
+    "start": 0.27,
+    "end": 0.33
+  },
+  {
+    "text": "Animator,",
+    "start": 0.33,
+    "end": 0.94
+  },
+  {
+    "text": "the",
+    "start": 0.94,
+    "end": 1.14
+  },
+  {
+    "text": "AI",
+    "start": 1.14,
+    "end": 1.27
+  },
+  {
+    "text": "that",
+    "start": 1.27,
+    "end": 1.54
+  },
+  {
+    "text": "edits",
+    "start": 1.54,
+    "end": 1.88
+  },
+  {
+    "text": "your",
+    "start": 1.88,
+    "end": 2.15
+  },
+  {
+    "text": "videos",
+    "start": 2.15,
+    "end": 2.56
+  },
+  {
+    "text": "in",
+    "start": 2.56,
+    "end": 2.69
+  },
+  {
+    "text": "one",
+    "start": 2.69,
+    "end": 2.87
+  },
+  {
+    "text": "click.",
+    "start": 2.93,
+    "end": 3.49
+  },
+  {
+    "text": "Drop",
+    "start": 3.49,
+    "end": 3.83
+  },
+  {
+    "text": "in",
+    "start": 3.83,
+    "end": 3.87
+  },
+  {
+    "text": "raw",
+    "start": 3.87,
+    "end": 4.05
+  },
+  {
+    "text": "video,",
+    "start": 4.05,
+    "end": 4.5
+  },
+  {
+    "text": "then",
+    "start": 4.5,
+    "end": 4.76
+  },
+  {
+    "text": "just",
+    "start": 4.76,
+    "end": 5.02
+  },
+  {
+    "text": "describe",
+    "start": 5.02,
+    "end": 5.55
+  },
+  {
+    "text": "the",
+    "start": 5.55,
+    "end": 5.75
+  },
+  {
+    "text": "edit",
+    "start": 5.75,
+    "end": 5.98
+  },
+  {
+    "text": "you",
+    "start": 6.02,
+    "end": 6.21
+  },
+  {
+    "text": "want.",
+    "start": 6.21,
+    "end": 6.5
+  },
+  {
+    "text": "Or",
+    "start": 6.5,
+    "end": 6.665
+  },
+  {
+    "text": "go",
+    "start": 6.665,
+    "end": 6.83
+  },
+  {
+    "text": "from",
+    "start": 6.83,
+    "end": 6.99
+  },
+  {
+    "text": "a",
+    "start": 7,
+    "end": 7.05
+  },
+  {
+    "text": "script",
+    "start": 7.05,
+    "end": 7.43
+  },
+  {
+    "text": "or",
+    "start": 7.43,
+    "end": 7.54
+  },
+  {
+    "text": "audio",
+    "start": 7.59,
+    "end": 7.92
+  },
+  {
+    "text": "straight",
+    "start": 7.92,
+    "end": 8.18
+  },
+  {
+    "text": "to",
+    "start": 8.26,
+    "end": 8.31
+  },
+  {
+    "text": "a",
+    "start": 8.31,
+    "end": 8.36
+  },
+  {
+    "text": "finished",
+    "start": 8.36,
+    "end": 8.81
+  },
+  {
+    "text": "cut",
+    "start": 8.81,
+    "end": 8.98
+  },
+  {
+    "text": "in",
+    "start": 9.02,
+    "end": 9.12
+  },
+  {
+    "text": "Creator",
+    "start": 9.12,
+    "end": 9.55
+  },
+  {
+    "text": "mode.",
+    "start": 9.55,
+    "end": 10
+  },
+  {
+    "text": "In",
+    "start": 10,
+    "end": 10.33
+  },
+  {
+    "text": "Motion,",
+    "start": 10.33,
+    "end": 10.55
+  },
+  {
+    "text": "give",
+    "start": 10.55,
+    "end": 10.77
+  },
+  {
+    "text": "it",
+    "start": 10.77,
+    "end": 10.88
+  },
+  {
+    "text": "a",
+    "start": 10.88,
+    "end": 10.93
+  },
+  {
+    "text": "reference",
+    "start": 10.93,
+    "end": 11.42
+  },
+  {
+    "text": "and",
+    "start": 11.42,
+    "end": 11.58
+  },
+  {
+    "text": "it",
+    "start": 11.58,
+    "end": 11.69
+  },
+  {
+    "text": "builds",
+    "start": 11.69,
+    "end": 12.02
+  },
+  {
+    "text": "motion",
+    "start": 12.02,
+    "end": 12.35
+  },
+  {
+    "text": "graphics",
+    "start": 12.35,
+    "end": 12.79
+  },
+  {
+    "text": "in",
+    "start": 12.79,
+    "end": 12.87
+  },
+  {
+    "text": "seconds.",
+    "start": 12.93,
+    "end": 13.5
+  },
+  {
+    "text": "Add",
+    "start": 13.5,
+    "end": 13.83
+  },
+  {
+    "text": "images,",
+    "start": 13.83,
+    "end": 14.24
+  },
+  {
+    "text": "video,",
+    "start": 14.24,
+    "end": 14.68
+  },
+  {
+    "text": "and",
+    "start": 14.74,
+    "end": 14.91
+  },
+  {
+    "text": "audio.",
+    "start": 14.91,
+    "end": 15.49
+  },
+  {
+    "text": "Layer",
+    "start": 15.49,
+    "end": 15.83
+  },
+  {
+    "text": "styles,",
+    "start": 15.83,
+    "end": 16.32
+  },
+  {
+    "text": "captions,",
+    "start": 16.32,
+    "end": 16.94
+  },
+  {
+    "text": "zooms,",
+    "start": 16.94,
+    "end": 17.38
+  },
+  {
+    "text": "transitions,",
+    "start": 17.38,
+    "end": 18.21
+  },
+  {
+    "text": "and",
+    "start": 18.21,
+    "end": 18.37
+  },
+  {
+    "text": "sound.",
+    "start": 18.43,
+    "end": 18.72
+  },
+  {
+    "text": "Frame",
+    "start": 18.72,
+    "end": 19.33
+  },
+  {
+    "text": "it",
+    "start": 19.33,
+    "end": 19.34
+  },
+  {
+    "text": "for",
+    "start": 19.34,
+    "end": 19.49
+  },
+  {
+    "text": "any",
+    "start": 19.5,
+    "end": 19.64
+  },
+  {
+    "text": "ratio,",
+    "start": 19.64,
+    "end": 20
+  },
+  {
+    "text": "from",
+    "start": 20,
+    "end": 20.3
+  },
+  {
+    "text": "9x16",
+    "start": 20.3,
+    "end": 21.03
+  },
+  {
+    "text": "reels",
+    "start": 21.04,
+    "end": 21.41
+  },
+  {
+    "text": "to",
+    "start": 21.41,
+    "end": 21.56
+  },
+  {
+    "text": "16x9,",
+    "start": 21.56,
+    "end": 22.5
+  },
+  {
+    "text": "1x1,",
+    "start": 22.64,
+    "end": 23.19
+  },
+  {
+    "text": "or",
+    "start": 23.23,
+    "end": 23.39
+  },
+  {
+    "text": "4x3.",
+    "start": 23.39,
+    "end": 24
+  },
+  {
+    "text": "Animator,",
+    "start": 24.33,
+    "end": 24.85
+  },
+  {
+    "text": "describe",
+    "start": 24.85,
+    "end": 25.54
+  },
+  {
+    "text": "it.",
+    "start": 25.54,
+    "end": 25.99
+  },
+  {
+    "text": "Watch",
+    "start": 26,
+    "end": 26.35
+  },
+  {
+    "text": "it",
+    "start": 26.35,
+    "end": 26.48
+  },
+  {
+    "text": "edit.",
+    "start": 26.52,
+    "end": 27
+  }
+]

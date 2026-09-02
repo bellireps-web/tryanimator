@@ -9,6 +9,7 @@
     "preview": "vite preview --port 3000"
   },
   "dependencies": {
+    "@kobalte/core": "^0.13.13",
     "lucide-solid": "^1.37.0",
     "solid-js": "^1.8.22"
   },
