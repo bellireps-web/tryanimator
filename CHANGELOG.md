@@ -18,6 +18,7 @@
 - Pricing v4: sección reubicada por modo (editor 3025→3600, creator 3725→3850, motion 3025→2880) para que no solape las 5 cards en editor/creator y sin margen de más en motion; alturas de página ajustadas (default 3400→4620, editor 4380, motion 2560→3660). Build ✅.
 - Creator showcase: los dos cuadrados pasan a tarjetas Script (icono FileText + líneas de texto) y Audio (icono AudioLines + waveform de 7 barras), con gradiente, sombra y etiqueta en mayúsculas. Build ✅.
 - Showcase autoplay: los videos de creator (`animator-promo-vertical.mp4`) y motion (`animator-arr.mp4`) arrancan solos (muted + `play()` al montar con catch silencioso); el botón flotante se sincroniza con eventos play/pause en vez de asumir estado. Build ✅.
+- Demo creator: los dos rectángulos grises de "Add audio/script for the video" pasan a mini-tarjetas Script y Audio (mismo diseño del showcase, compacto). Build ✅.
 
 ## Video + elements al job — 2026-09-03
 
