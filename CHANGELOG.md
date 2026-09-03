@@ -24,6 +24,7 @@
 - Demo Brand Colors: la tarjeta "Add assets for the edit" pasa a "Brand Colors" con 3 swatches del video (Ink #F5F3FF, Accent #B8B2EE, Panel #1F1B46) + muestra tipográfica Figtree Black 900 en mayúsculas con palabra en acento, igual que los captions del promo. Reglas `.landing-asset-art` eliminadas. Build ✅.
 - Brand Colors solo en creator: la tarjeta de assets es condicional (`landingMode() === "creator"` → Brand Colors; editor/motion recuperan "Add assets for the edit" con sus 5 imágenes y reglas `.landing-asset-art` restauradas). Build ✅.
 - Brand Colors centrado: `.landing-brand-art` ocupa los 422px bajo el título con `justify-content:center` (antes hueco abajo). Build ✅.
+- Showcase motion equilibrado: la fila sumaba 882px (video de 320) frente a 826px en editor → flecha y video ~28px a la izquierda. Tarjeta izquierda a 320px de base (rect + prompt a 320) y contenedor `landing-showcase-motion` a 1058px: gaps de 60px como editor y flecha centrada en página. Build ✅ (sin verificación visual).
 
 ## Video + elements al job — 2026-09-03
 
