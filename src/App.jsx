@@ -26,11 +26,15 @@ function EnterIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 10 4 15l5 5" /><path d="M20 4v7a4 4 0 0 1-4 4H4" /></svg>;
 }
 
-const [addReveal] = createViewportObserver({ threshold: 0.18 });
-function reveal(el) {
-  addReveal(el, (entry) => {
-    if (entry.isIntersecting) el.classList.add("revealed");
-  });
+function useReveal() {
+  // Created inside the component (not at module scope) so its
+  // computations/cleanups belong to the app root instead of warning.
+  const [addReveal] = createViewportObserver({ threshold: 0.18 });
+  return (el) => {
+    addReveal(el, (entry) => {
+      if (entry.isIntersecting) el.classList.add("revealed");
+    });
+  };
 }
 
 function syncMotionPlay(video, playing) {
@@ -229,6 +233,7 @@ function EditorView({ onBack, onEditRequest }) {
 }
 
 export default function App() {
+  const reveal = useReveal();
   const [page, setPage] = createSignal("landing");
   const [job, setJob] = createSignal({ prompt: "", ratio: "9:16" });
   const [landingMode, setLandingMode] = createSignal("editor");
