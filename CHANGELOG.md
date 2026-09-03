@@ -26,6 +26,7 @@
 - Brand Colors centrado: `.landing-brand-art` ocupa los 422px bajo el título con `justify-content:center` (antes hueco abajo). Build ✅.
 - Showcase motion equilibrado: la fila sumaba 882px (video de 320) frente a 826px en editor → flecha y video ~28px a la izquierda. Tarjeta izquierda a 320px de base (rect + prompt a 320) y contenedor `landing-showcase-motion` a 1058px: gaps de 60px como editor y flecha centrada en página. Build ✅ (sin verificación visual).
 - Prompt motion bonito: de texto lila suelto a tarjeta-cita (panel degradado, borde, radio 18, etiqueta "✦ PROMPT" en small caps, texto blanco 16px alineado a la izquierda). Build ✅.
+- Reference motion compacta: caja de 320→262px de ancho (262/237 ≈ aspecto de `chart.webp` 1109×989, el recorte del título desaparece sin alargar nada). La base de tarjeta queda en 320 para no mover la flecha. Build ✅.
 
 ## Video + elements al job — 2026-09-03
 
