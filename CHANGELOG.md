@@ -22,6 +22,7 @@
 - Iconos Script/Audio: stroke 1.5→3 y color #B8B2EE→#E4E2F6 (showcase + minis). Build ✅.
 - Iconos bis: `strokeWidth={3}` pasado por prop Lucide en los 4 iconos (el atributo `stroke-width=2` de Lucide + CSS en caché explicaba que no se viera el cambio). Build ✅.
 - Demo Brand Colors: la tarjeta "Add assets for the edit" pasa a "Brand Colors" con 3 swatches del video (Ink #F5F3FF, Accent #B8B2EE, Panel #1F1B46) + muestra tipográfica Figtree Black 900 en mayúsculas con palabra en acento, igual que los captions del promo. Reglas `.landing-asset-art` eliminadas. Build ✅.
+- Brand Colors solo en creator: la tarjeta de assets es condicional (`landingMode() === "creator"` → Brand Colors; editor/motion recuperan "Add assets for the edit" con sus 5 imágenes y reglas `.landing-asset-art` restauradas). Build ✅.
 
 ## Video + elements al job — 2026-09-03
 
