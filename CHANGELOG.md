@@ -1,5 +1,11 @@
 # Reglas de cambios del proyecto
 
+## Motion Slice 3: cache content-addressed — 2026-09-03
+
+- Claves en Rust (`motion-core/src/cache.rs`): FNV-1a 64 `motion/v1/{plan|doc|seg|final}/{hex}`, separadas por scope, doc, geometría de segmento y versión de modelo.
+- Adapter JS (`src/cache/`): mismos builders con BigInt (vectores cruzados `""→cbf29…`, `"foobar"→85944…` verificados en ambos lados), `MotionCache` con LRU por bytes y cuota 500MB, backends memoria (testeado) e IndexedDB (pendiente de navegador real).
+- Tests: Rust 22/22 ✅ (clippy 0), JS 8/8 ✅.
+
 ## Motion Slice 2: harness web-render — 2026-09-03
 
 - Nuevo `web-render/` (cero dependencias): reloj de frames `t=n/30`, segmentos acotados, catálogo de presets pineados, resolver puro `(plan,t,dims)->ops` y pintor Canvas2D fino.

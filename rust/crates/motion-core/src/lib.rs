@@ -9,6 +9,7 @@
 //! Async I/O lives at the boundary (worker / wasm adapters); these
 //! interfaces are sync so the core stays platform-independent.
 
+pub mod cache;
 pub mod json;
 pub mod plan;
 pub mod providers;
