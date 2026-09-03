@@ -1,5 +1,30 @@
 # Reglas de cambios del proyecto
 
+## Relojes save-time — 2026-09-03
+
+- "Edit 3 videos" centrado (regla scopeada a `.fg-save`, sin tocar brand).
+- Reloj rápido (20min): minutera a las 6 (180°), horaria a medio camino 12→1 (15°); arco de media luna 0→180°.
+- Reloj lento (4-5h): horaria a las 12 (0°), minutera entre las 4 y 5 (135°); arco 0→135°. Arcos en `conic-gradient` sobre `::before` (las agujas pintan encima).
+- Solo CSS, sin tocar JSX. Build ✅ (revisar visual en local).
+- Ajuste: reloj rápido con las dos agujas pequeñas (aguja 1 recta a las 12, aguja 2 entre 12 y 1); el lento queda como estaba. Arco sin cambios.
+- Arco = distancia entre agujas: rápido 0→15° (fina), lento 0→135° intacto; minutera del lento también pequeña.
+- Grow your brand: curva SVG 100→10K→100K→1M con área, fila avatar→1M y chips ✓ Approved/✓ Adjusted. Build ✅.
+- Grow bis: fuera chips, fuera tira azul (regla eliminada), avatar a rectángulo con radius, fila bajo gráfica [100 Followers →(flecha blanca learn, flipped) 1M Followers]. Build ✅.
+- Grow ter: fuera avatar (reglas eliminadas), fila 100→1M centrada, pills a 19px (el 600 ya era semi-bold). Build ✅.
+- Features: sección bajada 80px (3 modos), título blanco "Built by editors, for creators.". Build ✅.
+- Pricing bajo features (3025/3725/3025 por modo): toggle Monthly/Yearly funcional (yearly −20% placeholder + "billed yearly"), 3 cards Plus 20/Pro 40/Enterprise Custom con checks, CTAs a onboarding (Contact Sales pendiente de destino real). Build ✅.
+- Pricing v2: toggle compacto como el mode pill (220×44, 16px), cards min-height 680px, borde suavizado a #4A4870 y badge "Most popular" en Pro. Build ✅.
+- Pricing v3: hover con borde iluminado, divisor bajo la descripción, checks en acento, CTA Pro más brillante, descripción a 20px. Build ✅.
+- Pricing v4: sección reubicada por modo (editor 3025→3600, creator 3725→3850, motion 3025→2880) para que no solape las 5 cards en editor/creator y sin margen de más en motion; alturas de página ajustadas (default 3400→4620, editor 4380, motion 2560→3660). Build ✅.
+
+## Video + elements al job — 2026-09-03
+
+- El mock mete al job los videos subidos (nombre+url, sesión) y los elements marcados; `Edit it`/Enter va al loading con todo.
+- Loading por etapas: solo las fases de los elements elegidos (silencios/captions/b-rolls con counts del plan); el resto aparece como "en cola del agente". Sin elements, van las 3 soportadas.
+- Studio: si hay video subido, el preview lo reproduce de verdad (transporte play/pausa/seek/tiempos contra el elemento; captura compone su frame) y muestra chips de fuente + elements.
+- `generate.py --only silence|captions|brolls --elements "..." --videos "..."`: filtra etapas y registra `elements{requested,applied,queued}` + `sourceVideos` en `plan.json` (verificado: solo-captions → 0 cortes, 27.0s, Transitions en queued).
+- Verificación: `npm run build` ✅. Límite honesto: las urls subidas mueren al recargar (persistencia real con el servidor de render, plan pendiente de approve).
+
 ## Fix crash Loading (Kobalte Progress.Root undefined) — 2026-09-03
 
 - Causa raíz probada: bajo el bundler de dev (esbuild, ESM y CJS), `Progress.Root` llega `undefined` (`Root:undefined, Track:function` reproducido aquí empaquetando el import), y Solid casca con `reading 'name'` al renderizar `LoadingView`. En build (rollup) resolvía bien: por eso compilaba pero moría en dev.
