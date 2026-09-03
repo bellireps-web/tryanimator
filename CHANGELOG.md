@@ -20,6 +20,7 @@
 - Showcase autoplay: los videos de creator (`animator-promo-vertical.mp4`) y motion (`animator-arr.mp4`) arrancan solos (muted + `play()` al montar con catch silencioso); el botón flotante se sincroniza con eventos play/pause en vez de asumir estado. Build ✅.
 - Demo creator: los dos rectángulos grises de "Add audio/script for the video" pasan a mini-tarjetas Script y Audio (mismo diseño del showcase, compacto). Build ✅.
 - Iconos Script/Audio: stroke 1.5→3 y color #B8B2EE→#E4E2F6 (showcase + minis). Build ✅.
+- Iconos bis: `strokeWidth={3}` pasado por prop Lucide en los 4 iconos (el atributo `stroke-width=2` de Lucide + CSS en caché explicaba que no se viera el cambio). Build ✅.
 
 ## Video + elements al job — 2026-09-03
 
