@@ -220,10 +220,15 @@ export default function App() {
   const [page, setPage] = createSignal("landing");
   const [job, setJob] = createSignal({ prompt: "", ratio: "9:16" });
   const [landingMode, setLandingMode] = createSignal("editor");
+  const [billing, setBilling] = createSignal("monthly");
   const [landingScrolled, setLandingScrolled] = createSignal(false);
   const navigate = (nextPage) => {
     window.location.hash = nextPage === "editor" ? "editor" : "top";
     setPage(nextPage);
+  };
+  const scrollToSection = (selector) => {
+    const el = document.querySelector(selector);
+    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 110, behavior: "smooth" });
   };
   const handleHashChange = () => setPage(window.location.hash === "#editor" ? "editor" : "landing");
   onMount(() => {
@@ -257,7 +262,10 @@ export default function App() {
           <div class="landing-header-inner">
             <a class="landing-brand" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><LogoIcon /><span>Animator</span></a>
             <nav class="landing-nav" aria-label="Primary navigation">
-              {['Products', 'Features', 'Pricing', 'Coin Stock'].map((item) => <a href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }}>{item}</a>)}
+              <a href="#modes" onClick={(event) => { event.preventDefault(); scrollToSection(".landing-editor-mode"); }}>Products</a>
+              <a href="#features" onClick={(event) => { event.preventDefault(); scrollToSection(".landing-features"); }}>Features</a>
+              <a href="#pricing" onClick={(event) => { event.preventDefault(); scrollToSection(".landing-pricing"); }}>Pricing</a>
+              <a href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }}>Coin Stock</a>
             </nav>
             <a class="landing-auth" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }}>Sign Up/Log In</a>
           </div>

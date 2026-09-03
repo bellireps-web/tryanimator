@@ -30,6 +30,7 @@
 - Composición motion: Reference con el Anthropic naranja (`chart.webp`, thumb a 200×178 para no recortar); resultado con el video `animator-arr.mp4` cuadrado 330px sin borde/padding/título; tarjeta Assets → Brand Colors (`#7069AA/#B8B2EE/#EAE BF7` de `animator-arr-motion`). Build ✅.
 - Pricing más arriba: editor 3600→3500, creator 3850→3680, motion 2880→2800 (margen sobrante fuera, gaps seguros sobre el fin de features). Build ✅.
 - Pricing bis: otros −60px (editor →3440, creator →3620, motion →2740). Build ✅.
+- Nav con scroll: Products → sección de modos (Editor/Creator/Motion), Features → "Built by editors, for creators:", Pricing → pricing (scroll suave, −110px por el header fijo). Coin Stock sigue abriendo el editor. Build ✅.
 
 ## Video + elements al job — 2026-09-03
 
