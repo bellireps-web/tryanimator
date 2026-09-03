@@ -44,6 +44,7 @@
 .st-msgs:empty{display:none}
 .st-msg{background:#39375B;border-radius:12px;padding:8px 12px;font-size:14px}
 .st-msg.ctx{border:1px dashed #8D91A2;background:transparent;color:#CAD0EE}
+.st-msg.ai{background:#23233A;border-left:3px solid #7069AA}
 .st-input{border:0;background:transparent;color:#fff;font:600 16px/19px 'Figtree',sans-serif;outline:none;resize:none;min-height:30px}
 .st-input::placeholder{color:#9899A4}
 .st-tools{display:flex;align-items:center;gap:10px}
@@ -70,6 +71,7 @@
 .st-track{flex:1;height:13px;border-radius:999px;background:#28262F;cursor:pointer;overflow:hidden}
 .st-fill{height:100%;background:#fff;border-radius:999px;transform-origin:left center}
 .st-time{font-size:13px;color:#9899A4;font-variant-numeric:tabular-nums;white-space:nowrap}
+.st-preview video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
 
 /* Tarjeta de generacion: rectangulo del ratio con gradiente vivo dentro */
 .ld-dream{position:relative;overflow:hidden;border-radius:28px;background:#171342;box-shadow:0 24px 70px rgba(23,19,66,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}

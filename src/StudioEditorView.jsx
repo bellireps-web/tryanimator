@@ -1,6 +1,7 @@
-import { createSignal, onMount, onCleanup, For, Show } from "solid-js";
+import { createSignal, createEffect, onMount, onCleanup, For, Show } from "solid-js";
 import { Play, Pause, Plus } from "lucide-solid";
 import { RATIOS } from "./NewVideoView.jsx";
+import { stableJson, applyPatchOps, createMotionJob, runMotionJob } from "./motion/jobs.js";
 import "./studio.css";
 
 const PREVIEW_H = 479;
@@ -17,17 +18,37 @@ function SendIcon() {
   return <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" /></svg>;
 }
 
-export default function StudioEditorView({ job, onNewVideo, onExport }) {
+export default function StudioEditorView({ job, onNewVideo, onExport, motionJob, motionSnap, adapters, onMotionSnap }) {
   const [plan, setPlan] = createSignal(null);
   const [ratio, setRatio] = createSignal(job.ratio);
   const [draft, setDraft] = createSignal("");
   const [msgs, setMsgs] = createSignal(job.prompt ? [{ kind: "user", text: job.prompt }] : []);
+  // Motion follow-up state: the finished job, its mp4 object URL, patch flow.
+  const [mJob, setMJob] = createSignal(motionJob || null);
+  const [videoUrl, setVideoUrl] = createSignal(null);
+  const [patching, setPatching] = createSignal(false);
+  const motionPlan = () => mJob()?.result?.plan || null;
+  const motionSecs = () => motionPlan()?.duration || 0;
+  createEffect(() => {
+    const video = mJob()?.result?.video;
+    if (video && video.length) {
+      const url = URL.createObjectURL(new Blob([video], { type: "video/mp4" }));
+      setVideoUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+    }
+  });
+  onCleanup(() => { const url = videoUrl(); if (url) URL.revokeObjectURL(url); });
   const [playing, setPlaying] = createSignal(false);
   const [t, setT] = createSignal(0);
+  const [vidDur, setVidDur] = createSignal(0);
   let raf = 0;
   let last = 0;
+  let vid = null;
 
-  const duration = () => plan()?.timelineDuration ?? 0;
+  const srcVideo = () => (job.videos ?? [])[0] ?? null;
+  const duration = () => vidDur() || plan()?.timelineDuration || motionSecs() || 0;
 
   onMount(() => {
     fetch("plan.json")
@@ -61,18 +82,60 @@ export default function StudioEditorView({ job, onNewVideo, onExport }) {
   const seek = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-    setT(frac * duration());
+    if (vid) vid.currentTime = frac * duration();
+    else setT(frac * duration());
+  };
+  const sendMotionPatch = async (text) => {
+    const current = mJob();
+    const planSnapshot = current?.result?.plan;
+    if (!planSnapshot || !adapters) return;
+    setPatching(true);
+    try {
+      const ops = await adapters.ai.chatPatch(stableJson(planSnapshot), text);
+      const next = applyPatchOps(planSnapshot, ops);
+      const retry = createMotionJob({ ...current.input, seed: next.seed });
+      retry.basePlan = next;
+      await runMotionJob(retry, adapters, (snapshot) => {
+        if (onMotionSnap) onMotionSnap({ ...snapshot });
+      });
+      if (retry.state === "done") {
+        setMJob(retry);
+        setMsgs((m) => [...m, { kind: "ai", text: `Aplicados ${ops.length} cambios · ${next.scenes.length} escenas · ${next.duration}s` }]);
+      } else {
+        setMsgs((m) => [...m, { kind: "ai", text: `Error [${retry.error.code}]: ${retry.error.message}` }]);
+      }
+    } catch (error) {
+      setMsgs((m) => [...m, { kind: "ai", text: `Error [${(error && error.code) || "failed"}]: ${(error && error.message) || error}` }]);
+    } finally {
+      setPatching(false);
+    }
   };
   const send = () => {
     const text = draft().trim();
-    if (!text) return;
+    if (!text || patching()) return;
     setMsgs((m) => [...m, { kind: "user", text }]);
     setDraft("");
+    if (mJob()) sendMotionPatch(text);
   };
   const addContext = () => {
+    const mp = motionPlan();
+    if (mp) {
+      setMsgs((m) => [...m, { kind: "ctx", text: `Motion: ${mp.scenes.length} escenas, ${mp.duration}s, estilo ${mp.style?.id ?? mp.style} en ${ratio()}` }]);
+      return;
+    }
     const p = plan();
     if (!p || p.error) return;
     setMsgs((m) => [...m, { kind: "ctx", text: `Contexto: ${p.captions.length} captions, ${p.brolls.length} b-rolls, ${p.timelineDuration.toFixed(1)}s en ${ratio()}` }]);
+  };
+  const downloadMotion = () => {
+    const video = mJob()?.result?.video;
+    if (!video || !video.length) return;
+    const url = videoUrl() || URL.createObjectURL(new Blob([video], { type: "video/mp4" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `animator-${Math.round(motionSecs())}s.mp4`;
+    a.click();
+    if (!videoUrl()) setTimeout(() => URL.revokeObjectURL(url), 5000);
   };
   const cycleRatio = () => setRatio((r) => RATIOS[(RATIOS.indexOf(r) + 1) % RATIOS.length]);
   const activeCaption = () => plan()?.captions?.find((c) => t() >= c.t0 && t() < c.t1)?.text ?? "";
@@ -133,7 +196,7 @@ export default function StudioEditorView({ job, onNewVideo, onExport }) {
             value={draft()}
             onInput={(e) => setDraft(e.currentTarget.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Describe the changes you want in the video"
+            placeholder={mJob() ? (patching() ? "Aplicando cambios…" : "Describe los cambios del motion") : "Describe the changes you want in the video"}
             aria-label="Describe the changes you want in the video"
           />
           <div class="st-tools">
@@ -141,7 +204,7 @@ export default function StudioEditorView({ job, onNewVideo, onExport }) {
             <button class="st-tool" onClick={cycleRatio} aria-label={`Ratio actual ${ratio()}. Cambiar`} title={ratio()}>
               <span class="rect" style={{ display: "block", width: ratio() === "9:16" ? "10px" : ratio() === "16:9" ? "20px" : ratio() === "1:1" ? "15px" : "18px", height: ratio() === "9:16" ? "18px" : ratio() === "16:9" ? "12px" : ratio() === "1:1" ? "15px" : "13px", border: "1.5px solid #fff", "border-radius": "3px" }} />
             </button>
-            <button class="st-send" disabled={!draft().trim()} onClick={send} aria-label="Enviar"><SendIcon /></button>
+            <button class="st-send" disabled={!draft().trim() || patching()} onClick={send} aria-label="Enviar"><SendIcon /></button>
           </div>
         </div>
         <p class="st-beta">This is a early beta can be errors</p>
@@ -149,12 +212,43 @@ export default function StudioEditorView({ job, onNewVideo, onExport }) {
 
       <main class="st-main" aria-label="Vista previa">
         <div class="st-main-top">
-          <button class="st-export" onClick={onExport}>Export</button>
+          <button class="st-export" onClick={() => { if (videoUrl()) downloadMotion(); else onExport(); }}>{videoUrl() ? "Descargar MP4" : "Export"}</button>
         </div>
         <button class="st-capture" onClick={captureFrame} aria-label="Capturar frame actual"><Plus /><span>Capturar Frame</span></button>
         <div class="st-preview" style={{ width: `${ratioWidth(ratio())}px`, height: `${PREVIEW_H}px` }}>
-          <Show when={plan()?.brolls?.length} fallback={<span class="st-empty">{ratio()} · {fmt(duration())}</span>}>
-            <img src="poster.png" alt={`Fotograma en ${fmt(t())}`} />
+          <Show when={videoUrl()} fallback={
+          <Show when={srcVideo()} fallback={
+            <Show when={plan()?.brolls?.length} fallback={<span class="st-empty">{ratio()} · {fmt(duration())}</span>}>
+              <img src="poster.png" alt={`Fotograma en ${fmt(t())}`} />
+            </Show>
+          }>
+            {(v) => (
+              <video
+                ref={(el) => { vid = el; }}
+                src={v().url}
+                playsInline
+                preload="auto"
+                onLoadedMetadata={(e) => setVidDur(e.currentTarget.duration || 0)}
+                onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
+                onPlay={() => setPlaying(true)}
+                onPause={() => setPlaying(false)}
+                onEnded={() => setPlaying(false)}
+              />
+            )}
+          </Show>
+          }>
+            <video
+              ref={(el) => { vid = el; }}
+              src={videoUrl()}
+              controls
+              playsInline
+              preload="auto"
+              onLoadedMetadata={(e) => setVidDur(e.currentTarget.duration || 0)}
+              onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              onEnded={() => setPlaying(false)}
+            />
           </Show>
         </div>
         <div class="st-transport">
@@ -166,6 +260,14 @@ export default function StudioEditorView({ job, onNewVideo, onExport }) {
           </div>
           <span class="st-time">{fmt(t())} / {fmt(duration())}</span>
         </div>
+        <Show when={(job.elements ?? []).length || srcVideo() || motionPlan()}>
+          <div class="st-elements" aria-label="Entrada del edit">
+            <Show when={srcVideo()}><span class="st-chip src">▸ {srcVideo().name ?? "video"}</span></Show>
+            <Show when={motionPlan()}><span class="st-chip src">▸ motion · {motionPlan().style?.id ?? motionPlan().style} · {motionPlan().scenes.length} escenas</span></Show>
+            <Show when={motionSnap()}><span class="st-chip">{motionSnap().state} {Math.round((motionSnap().progress || 0) * 100)}%</span></Show>
+            <For each={job.elements ?? []}>{(e) => <span class="st-chip">{e}</span>}</For>
+          </div>
+        </Show>
       </main>
     </div>
   );

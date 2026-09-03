@@ -12,6 +12,7 @@
     "@kobalte/core": "^0.13.13",
     "@solid-primitives/intersection-observer": "^2.2.5",
     "lucide-solid": "^1.37.0",
+    "mediabunny": "^1.55.6",
     "solid-js": "^1.8.22"
   },
   "devDependencies": {

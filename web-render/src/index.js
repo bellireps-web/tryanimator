@@ -36,9 +36,9 @@ function requireVideoEncoder() {
 }
 
 /**
- * Encode one segment of frames. Resolves with { chunks, keyframes }.
- * The caller muxes (mediabunny, pending vendoring) — this proves the
- * encode path frame by frame.
+ * Encode one segment of frames. Resolves with { chunks, keyframes } where
+ * each chunk carries serializable packet data { data, type, timestamp,
+ * duration } for the segment cache and the mediabunny mux.
  */
 export async function encodeSegment(plan, segment, canvas, images, onProgress) {
   requireVideoEncoder();
@@ -46,7 +46,18 @@ export async function encodeSegment(plan, segment, canvas, images, onProgress) {
   let keyframes = 0;
   const encoder = new VideoEncoder({
     output: (chunk) => {
-      chunks.push({ size: chunk.byteLength, key: chunk.type === "key" });
+      // Copy bytes now: EncodedVideoChunk views are only valid while the
+      // chunk lives, and the segment cache stores plain data (IndexedDB).
+      const data = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(data);
+      chunks.push({
+        size: chunk.byteLength,
+        key: chunk.type === "key",
+        data,
+        type: chunk.type,
+        timestamp: chunk.timestamp,
+        duration: chunk.duration,
+      });
       if (chunk.type === "key") keyframes++;
       if (onProgress) onProgress(chunks.length);
     },

@@ -1,5 +1,21 @@
 # Reglas de cambios del proyecto
 
+## Motion Slice 7: E2E prompt→MP4 — 2026-09-03
+
+- Nuevo `src/motion/e2e.test.js`: pipeline completo con módulos reales (state machine, MotionCache, segment renderer, mux, image loader, validación auto) y stubs solo en el borde navegador (AI, stock HTTP, encoder, mediabunny).
+- Cubre: 30s→2 segmentos renderizados, reuso de segmentos con mux añadido, 900 paquetes muxados en orden, final cache-hit que salta renderer+mux, visuales stock passthrough + authored con doc id.
+- `node --test`: 1/1 ✅. Gap honesto: codecs reales (WebCodecs + bytes MP4 de mediabunny) y goldens de píxeles exigen navegador real.
+
+## Motion Slice 6: jobs + UI Motion — 2026-09-03
+
+- Nuevo `src/motion/jobs.js`: state machine queued→resolving→authoring→rendering→done/failed con adapters inyectados, `ProxyAiAdapter` (/ai/chat), 9 patch ops inmutables, `basePlan` para re-renders de chat sin IA, doc ids content-addressed, seed determinista por input.
+- Nuevo `src/motion/browser.js`: adapters reales (MotionCache/IndexedDB, stock→proxy→Image, segment renderer con cache por `segmentKey`, mux mediabunny MP4 fastStart in-memory + AAC del mix OfflineAudioContext). `VITE_MOTION_PROXY`/`VITE_MOTION_APP_TOKEN`; sin ellos error visible `proxy_not_configured`.
+- UI (Solid): Motion composer→`MotionLoading` con progreso real por snapshot + error estructurado con volver; Studio con preview MP4, descarga `animator-<s>s.mp4`, chat→`chatPatch`→`applyPatchOps`→re-render, chips de estado.
+- `applyResolvedScenes` acepta `visual: {kind: stock|asset}` validado (contrato Rust); authored sigue a `authored_not_supported` hasta vendoring HyperFrames (docs se cachean igual).
+- `encodeSegment` retiene packet bytes (`copyTo`) para cache de segmentos y mux.
+- Dep `mediabunny@1.55.6` (MPL-2.0 revisada: copyleft a nivel de fichero, uso como librería sin modificar permitido; no GPL/AGPL/BUSL/SSPL). Build ✅ (920KB bundle incl. mediabunny).
+- Tests: jobs 10/10, browser 7/7 ✅.
+
 ## Motion Slice 5: audio música/SFX — 2026-09-03
 
 - Nuevo `src/motion/audio.js`: clientes finos de `/audio/music|sfx` (errores estructurados propagados), `buildAudioTimeline` puro (bed + cues con validación de rango y tracks) y `renderAudioBuffer` vía OfflineAudioContext (pendiente de navegador real).

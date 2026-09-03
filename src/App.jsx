@@ -6,6 +6,18 @@ import { Home, Folder, LayoutTemplate, BookOpen, Users, CircleDollarSign, Settin
 import NewVideoView from "./NewVideoView.jsx";
 import LoadingView from "./LoadingView.jsx";
 import StudioEditorView from "./StudioEditorView.jsx";
+import { buildMotionPlanInput, createMotionJob } from "./motion/jobs.js";
+import { createBrowserAdapters } from "./motion/browser.js";
+
+const MOTION_PROXY = import.meta.env.VITE_MOTION_PROXY || "";
+const MOTION_APP_TOKEN = import.meta.env.VITE_MOTION_APP_TOKEN || "";
+let motionAdapters = null;
+function getMotionAdapters() {
+  if (!motionAdapters) {
+    motionAdapters = createBrowserAdapters({ proxyBase: MOTION_PROXY, appToken: MOTION_APP_TOKEN });
+  }
+  return motionAdapters;
+}
 
 function LogoIcon() {
   return <img class="landing-logo-icon" src="/icon-animator.png" alt="" />;
@@ -245,7 +257,34 @@ export default function App() {
 
   // @codebuff TEMP-FOR-TESTING: onboarding always shows on Get started
   const handleGetStarted = () => setPage("onboarding");
-  const startJob = (j) => { setJob(j); setPage("loading"); };
+  const [motionJob, setMotionJob] = createSignal(null);
+  const [motionSnap, setMotionSnap] = createSignal(null);
+  const startJob = (j) => {
+    // Motion composer submits carry a duration (number or "Auto").
+    if (j && j.duration !== undefined) {
+      const input = buildMotionPlanInput({
+        prompt: j.prompt,
+        ratio: j.ratio,
+        duration: j.duration === "Auto" ? "auto" : j.duration,
+        style: "auto",
+        reference: (j.videos && j.videos[0] && j.videos[0].url) || null,
+      });
+      setMotionJob(createMotionJob(input));
+      setMotionSnap(null);
+      setJob(j);
+      setPage("loading");
+      return;
+    }
+    setMotionJob(null);
+    setJob(j);
+    setPage("loading");
+  };
+  const aiFeatures = ["High semanal usgae limits", "Edit videos with AI: B-Rolls, Effects, Zooms, Transitions, Motion Graphics, Captions", "Audio/Script to video", "AI Motion Graphics"];
+  const plans = [
+    { name: "Plus", monthly: "20$/mo", yearly: "16$/mo", desc: "A good plan for make video and edit fast", features: aiFeatures, checks: true, cta: "Get started" },
+    { name: "Pro", monthly: "40$/mo", yearly: "32$/mo", desc: "The best plan for make video and edit fast", features: ["x2.5 semanal usgae limits", ...aiFeatures.slice(1)], checks: true, cta: "Get started", badge: "Most popular" },
+    { name: "Enterprise", monthly: "Custom", yearly: "Custom", desc: "A good plan for make video and edit fast", features: ["All in Plus, Pro", "Controla de members", "Analisis the uso y controles de uso", "Custom Usage", "SAML, SSO and MFA", "Priority support"], checks: true, cta: "Contact Sales" },
+  ];
   const finishOnboarding = () => {
     localStorage.setItem("autoedit_onboarding_done", "1");
     navigate("editor");
@@ -400,10 +439,10 @@ export default function App() {
         </main>
       </div>
       }>
-      <StudioEditorView job={job()} onNewVideo={() => setPage("newvideo")} onExport={() => navigate("editor")} />
+      <StudioEditorView job={job()} motionJob={motionJob()} motionSnap={motionSnap()} adapters={motionJob() ? getMotionAdapters() : null} onMotionSnap={setMotionSnap} onNewVideo={() => setPage("newvideo")} onExport={() => navigate("editor")} />
       </Show>
       }>
-      <LoadingView ratio={job().ratio} onDone={() => setPage("studio")} />
+      <LoadingView job={job()} motion={motionJob() ? { job: motionJob(), adapters: getMotionAdapters(), onSnap: setMotionSnap } : null} onDone={() => setPage("studio")} onBack={() => setPage("editor")} />
       </Show>
       }>
       <NewVideoView initial={job()} onSubmit={startJob} />

@@ -6,6 +6,7 @@ import {
   buildScenePrompt,
   buildPatchPrompt,
   applyAutoResolution,
+  applyResolvedScenes,
   googleFontUrl,
   brandCssVars,
   PROMPT_CHAR_CAP,
@@ -90,6 +91,38 @@ test("applyAutoResolution validates and applies", () => {
   assert.equal(codeOf(() => applyAutoResolution(plan, { duration_secs: 61, style_id: "kinetic-type", style_version: "1.0.0" })), 'bad_resolution');
   assert.equal(codeOf(() => applyAutoResolution(plan, { duration_secs: 10, style_id: "nope", style_version: "1.0.0" })), 'unknown_preset');
   assert.equal(codeOf(() => applyAutoResolution(plan, null)), 'bad_resolution');
+});
+
+test("applyResolvedScenes validates sum and fields", () => {
+  const plan = { duration: 30, scenes: [] };
+  const scenes = [
+    { duration_secs: 10, brief: "opening", text: "Hi", transition: "fade" },
+    { duration_secs: 20, brief: "main", text: "", transition: "cut" },
+  ];
+  const resolved = applyResolvedScenes(plan, scenes);
+  assert.equal(resolved.scenes.length, 2);
+  assert.deepEqual(resolved.scenes[0].visual, { kind: "authored", doc_id: "" });
+  const withVisual = applyResolvedScenes(plan, [
+    { ...scenes[0], duration_secs: 10, visual: { kind: "stock", query: "  neon city " } },
+    { ...scenes[1], duration_secs: 20, visual: { kind: "asset", id: "upload-1" } },
+  ]);
+  assert.deepEqual(withVisual.scenes[0].visual, { kind: "stock", query: "neon city" });
+  assert.deepEqual(withVisual.scenes[1].visual, { kind: "asset", id: "upload-1" });
+  assert.equal(
+    codeOf(() =>
+      applyResolvedScenes(plan, [{ ...scenes[0], visual: { kind: "teleport" } }, scenes[1]]),
+    ),
+    "bad_resolution",
+  );
+  assert.equal(
+    codeOf(() =>
+      applyResolvedScenes(plan, [{ ...scenes[0], visual: { kind: "stock", query: "  " } }, scenes[1]]),
+    ),
+    "bad_resolution",
+  );
+  assert.equal(codeOf(() => applyResolvedScenes(plan, [])), 'bad_resolution');
+  assert.equal(codeOf(() => applyResolvedScenes(plan, [{ ...scenes[0], duration_secs: 5 }, scenes[1]])), 'bad_resolution');
+  assert.equal(codeOf(() => applyResolvedScenes(plan, [{ ...scenes[0], brief: "  " }, scenes[1]])), 'bad_resolution');
 });
 
 test("brand font url and css vars", () => {

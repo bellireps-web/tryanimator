@@ -49,8 +49,11 @@ function clip(text, cap) {
 const RESOLVE_SYSTEM = [
   "You resolve Auto fields of a MotionPlan v1 for a 1080p30 HyperFrames render.",
   `Available presets: ${presetIds().join(", ")}.`,
-  "Reply with JSON only: {\"duration_secs\": 1..60, \"style_id\": \"<preset>\", \"style_version\": \"<pinned>\"}.",
-  "duration_secs must be within 1..=60. Never invent other fields.",
+  "Reply with JSON only: {\"duration_secs\": 1..60, \"style_id\": \"<preset>\", \"style_version\": \"<pinned>\",",
+  " \"scenes\": [{\"duration_secs\": N, \"brief\": \"...\", \"text\": \"...\", \"transition\": \"cut|fade|slide\"}]}.",
+  "Scene durations must sum to duration_secs. Never invent other fields.",
+  "Optional per scene: \"visual\": {\"kind\": \"stock\", \"query\": \"...\"} for a photographic",
+  "backdrop (a short search query). Omit visual for brand-graphic scenes.",
 ].join(" ");
 
 /** Messages for POST /ai/chat to resolve Auto duration + style. */
@@ -123,6 +126,64 @@ export function applyAutoResolution(plan, resolution) {
     throw codedError("unknown_preset", `preset: ${style_id}`);
   }
   return { ...plan, duration: secs, style: { id: style_id, version: style_version } };
+}
+
+/**
+ * Validate a model-provided scene visual. Only paintable kinds pass:
+ * stock (query searched via the proxy) and asset (uploader-provided id).
+ * Anything else — including authored, which needs the vendored HyperFrames
+ * runtime — falls back to the authored default the machine fills next.
+ * Mirrors the Rust Visual contract (asset id / stock query non-empty).
+ */
+export function resolveSceneVisual(visual, index = 0) {
+  const fallback = { kind: "authored", doc_id: "" };
+  if (!visual || typeof visual !== "object") return fallback;
+  if (visual.kind === "stock" && String(visual.query || "").trim()) {
+    return { kind: "stock", query: String(visual.query).trim().slice(0, 200) };
+  }
+  if (visual.kind === "asset" && String(visual.id || "").trim()) {
+    return { kind: "asset", id: String(visual.id).trim().slice(0, 200) };
+  }
+  if (visual.kind !== undefined && visual.kind !== "authored") {
+    throw codedError("bad_resolution", `scenes[${index}].visual has unknown kind`);
+  }
+  return fallback;
+}
+
+/**
+ * Attach validated scene briefs to a plan (pure). Scenes without a usable
+ * model visual start with an empty authored doc id; the machine authors
+ * each one next.
+ */
+export function applyResolvedScenes(plan, scenes) {
+  if (!Array.isArray(scenes) || !scenes.length) {
+    throw codedError("bad_resolution", "at least one scene brief is required");
+  }
+  const mapped = scenes.map((scene, index) => {
+    const duration_secs = Number(scene && scene.duration_secs);
+    if (!Number.isFinite(duration_secs) || duration_secs <= 0) {
+      throw codedError("bad_resolution", `scenes[${index}].duration_secs must be positive`);
+    }
+    if (!scene.brief || !String(scene.brief).trim()) {
+      throw codedError("bad_resolution", `scenes[${index}].brief is required`);
+    }
+    if (!scene.transition || !String(scene.transition).trim()) {
+      throw codedError("bad_resolution", `scenes[${index}].transition is required`);
+    }
+    return {
+      duration_secs,
+      brief: String(scene.brief),
+      text: String(scene.text || ""),
+      transition: String(scene.transition),
+      visual: resolveSceneVisual(scene.visual, index),
+    };
+  });
+  const sum = mapped.reduce((total, scene) => total + scene.duration_secs, 0);
+  const expected = Number(plan.duration);
+  if (!Number.isFinite(expected) || Math.abs(sum - expected) > 0.05) {
+    throw codedError("bad_resolution", "scene briefs must sum to the resolved duration");
+  }
+  return { ...plan, scenes: mapped };
 }
 
 const FONT_CHARSET = /^[A-Za-z0-9][A-Za-z0-9 +-]*$/;
