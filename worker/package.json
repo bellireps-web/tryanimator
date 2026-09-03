@@ -1,0 +1,13 @@
+{
+  "name": "motion-proxy",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Cloudflare Worker proxy: holds provider keys server-side and forwards AI/stock/audio calls.",
+  "scripts": {
+    "test": "node --test test/proxy.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

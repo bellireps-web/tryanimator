@@ -1,5 +1,12 @@
 # Reglas de cambios del proyecto
 
+## Motion Slice 1: proxy Worker — 2026-09-03
+
+- Nuevo `worker/` (Cloudflare Worker, cero dependencias): guarda todas las keys en servidor (`APP_TOKEN`, `META_API_KEY`, `STOCK_API_KEY`, `AUDIO_API_KEY` vía secrets).
+- Rutas: `GET /health`, `POST /ai/chat` (Meta Model API, modelos `muse-spark-*`, `max_tokens` cap 8192, mensajes acotados), `GET /stock/images`, `GET /audio/music|sfx` (normalización Pixabay).
+- Seguridad: token de app obligatorio, CORS allowlist exacta, `Authorization` de cliente ignorada, rate-limit por IP con `Retry-After`, mapeo 401/429/timeout a errores estructurados.
+- `npm test`: 10/10 ✅ con `node:test` y fetch stub (sin red). Deploy con `wrangler` pendiente del owner (requiere cuenta + secrets).
+
 ## Motion Slice 0: contratos Rust — 2026-09-03
 
 - Nuevo workspace `rust/` con crate `motion-core` std-only (cero dependencias: sin red a crates.io en este entorno).

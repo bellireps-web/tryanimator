@@ -1,0 +1,19 @@
+name = "animator-motion-proxy"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Comma-separated origins allowed to call the proxy (exact match).
+ALLOWED_ORIGIN = "http://localhost:3000"
+# Best-effort per-isolate rate limit (see README: harden with CF Rate Limiting in prod).
+RATE_LIMIT_PER_MIN = "60"
+# Stock image API base (final shape lands when the API is supplied).
+STOCK_API_URL = ""
+# Audio library base (default: Pixabay).
+AUDIO_API_URL = "https://pixabay.com/api"
+
+# Secrets (never in repo; set with `wrangler secret put <NAME>`):
+#   APP_TOKEN      - clients must send it as `x-app-token`
+#   META_API_KEY   - Meta Model API key (muse-spark)
+#   STOCK_API_KEY  - stock image API key
+#   AUDIO_API_KEY  - audio library key (Pixabay: sent as ?key=)
