@@ -1,5 +1,12 @@
 # Reglas de cambios del proyecto
 
+## Motion Slice 2: harness web-render — 2026-09-03
+
+- Nuevo `web-render/` (cero dependencias): reloj de frames `t=n/30`, segmentos acotados, catálogo de presets pineados, resolver puro `(plan,t,dims)->ops` y pintor Canvas2D fino.
+- Transiciones cut/fade/slide con ventana de blend 0.4s, Ken Burns 1→1.08, colores brand cíclicos, `dims()` 9:16→608×1080.
+- Errores estructurados sin blanks silenciosos (`style_unresolved`, `version_mismatch`, `authored_not_supported`, ...).
+- `node --test`: 12/12 ✅. Pendiente explícito (sin red/navegador aquí): vendoring HyperFrames, goldens de píxeles, muxado mediabunny (revisión MPL-2.0).
+
 ## Motion Slice 1: proxy Worker — 2026-09-03
 
 - Nuevo `worker/` (Cloudflare Worker, cero dependencias): guarda todas las keys en servidor (`APP_TOKEN`, `META_API_KEY`, `STOCK_API_KEY`, `AUDIO_API_KEY` vía secrets).
