@@ -27,6 +27,7 @@
 - Showcase motion equilibrado: la fila sumaba 882px (video de 320) frente a 826px en editor → flecha y video ~28px a la izquierda. Tarjeta izquierda a 320px de base (rect + prompt a 320) y contenedor `landing-showcase-motion` a 1058px: gaps de 60px como editor y flecha centrada en página. Build ✅ (sin verificación visual).
 - Prompt motion bonito: de texto lila suelto a tarjeta-cita (panel degradado, borde, radio 18, etiqueta "✦ PROMPT" en small caps, texto blanco 16px alineado a la izquierda). Build ✅.
 - Reference motion compacta: caja de 320→262px de ancho (262/237 ≈ aspecto de `chart.webp` 1109×989, el recorte del título desaparece sin alargar nada). La base de tarjeta queda en 320 para no mover la flecha. Build ✅.
+- Composición motion: Reference con el Anthropic naranja (`chart.webp`, thumb a 200×178 para no recortar); resultado con el video `animator-arr.mp4` cuadrado 330px sin borde/padding/título; tarjeta Assets → Brand Colors (`#7069AA/#B8B2EE/#EAE BF7` de `animator-arr-motion`). Build ✅.
 
 ## Video + elements al job — 2026-09-03
 
