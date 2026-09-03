@@ -1,0 +1,9 @@
+[package]
+name = "motion-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# std-only: no network access to crates.io in this environment,
+# so contracts ship with zero dependencies.

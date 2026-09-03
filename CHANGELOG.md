@@ -1,5 +1,13 @@
 # Reglas de cambios del proyecto
 
+## Motion Slice 0: contratos Rust — 2026-09-03
+
+- Nuevo workspace `rust/` con crate `motion-core` std-only (cero dependencias: sin red a crates.io en este entorno).
+- `MotionPlan v1`: perfil fijo 1080p/30fps, duración 1–60s, suma de escenas = duración resuelta, colores `#rgb/#rrggbb`, font Google Fonts, presets con versión pineada, cues SFX dentro del total; `dims()` deriva 1920×1080, 608×1080, 1080×1080, 1440×1080 según ratio.
+- `EditorTransport`: `create_motion/patch_motion/render/cancel/status` + 9 patch ops, con envelopes JSON y errores estructurados (`invalid_plan`, `bad_command`) que se propagan, sin defaults silenciosos.
+- `providers`: traits `AiProvider/StockProvider/AudioLibrary` + `decode_plan_output` que valida JSON de modelo con excerpt truncado (512).
+- `cargo test`: 18/18 ✅, clippy 0 warnings, `cargo fmt` limpio. Nota: crate `motion-plan` con serde descartado (incompilable offline); se reevaluará con red.
+
 ## Relojes save-time — 2026-09-03
 
 - "Edit 3 videos" centrado (regla scopeada a `.fg-save`, sin tocar brand).
