@@ -1,5 +1,10 @@
 # Reglas de cambios del proyecto
 
+## Motion Slice 5: audio música/SFX — 2026-09-03
+
+- Nuevo `src/motion/audio.js`: clientes finos de `/audio/music|sfx` (errores estructurados propagados), `buildAudioTimeline` puro (bed + cues con validación de rango y tracks) y `renderAudioBuffer` vía OfflineAudioContext (pendiente de navegador real).
+- `node --test`: 5/5 ✅.
+
 ## Motion Slice 4: estilo Auto + referencia + brand — 2026-09-03
 
 - Nuevo `src/motion/auto.js` (cero dependencias): extracción de paleta por cuantización 4-bit, builders de prompts (`resolve/scene/patch`) con caps, `applyAutoResolution` validado, URL Google Fonts y variables CSS de brand.
