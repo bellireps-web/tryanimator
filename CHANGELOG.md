@@ -28,6 +28,7 @@
 - Prompt motion bonito: de texto lila suelto a tarjeta-cita (panel degradado, borde, radio 18, etiqueta "✦ PROMPT" en small caps, texto blanco 16px alineado a la izquierda). Build ✅.
 - Reference motion compacta: caja de 320→262px de ancho (262/237 ≈ aspecto de `chart.webp` 1109×989, el recorte del título desaparece sin alargar nada). La base de tarjeta queda en 320 para no mover la flecha. Build ✅.
 - Composición motion: Reference con el Anthropic naranja (`chart.webp`, thumb a 200×178 para no recortar); resultado con el video `animator-arr.mp4` cuadrado 330px sin borde/padding/título; tarjeta Assets → Brand Colors (`#7069AA/#B8B2EE/#EAE BF7` de `animator-arr-motion`). Build ✅.
+- Pricing más arriba: editor 3600→3500, creator 3850→3680, motion 2880→2800 (margen sobrante fuera, gaps seguros sobre el fin de features). Build ✅.
 
 ## Video + elements al job — 2026-09-03
 
