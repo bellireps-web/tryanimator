@@ -135,7 +135,9 @@ test("chat maps upstream 401/429/timeout", async () => {
       ENV,
     );
     assert.equal(denied.status, 502);
-    assert.equal((await denied.json()).code, "provider_unauthorized");
+    const deniedBody = await denied.json();
+    assert.equal(deniedBody.code, "provider_unauthorized");
+    assert.match(deniedBody.message, /nope/, "upstream reason is surfaced");
   } finally {
     delete globalThis.fetch;
   }

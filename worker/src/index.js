@@ -99,7 +99,17 @@ async function mapUpstream(response) {
     });
   }
   if (response.status === 401 || response.status === 403) {
-    return apiError("provider_unauthorized", "provider rejected credentials", 502);
+    // Surface Meta's own reason (truncated): "rejected credentials" alone
+    // cannot distinguish revoked key, wrong project, or missing access.
+    // Bodies carry no secrets (the key travels only in our request header).
+    let detail = "";
+    try {
+      const text = await response.text();
+      if (text && text.trim()) detail = `: ${text.trim().slice(0, 300)}`;
+    } catch {
+      detail = "";
+    }
+    return apiError("provider_unauthorized", `provider rejected credentials${detail}`, 502);
   }
   if (response.status === 429) {
     const retry = response.headers.get("retry-after");
