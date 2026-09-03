@@ -1,5 +1,11 @@
 # Reglas de cambios del proyecto
 
+## Motion Slice 4: estilo Auto + referencia + brand — 2026-09-03
+
+- Nuevo `src/motion/auto.js` (cero dependencias): extracción de paleta por cuantización 4-bit, builders de prompts (`resolve/scene/patch`) con caps, `applyAutoResolution` validado, URL Google Fonts y variables CSS de brand.
+- Muestreo de vídeo a 1fps implementado fino para navegador (pendiente de run real); las llamadas IA en vivo esperan proxy desplegado + key.
+- `node --test`: 4/4 ✅.
+
 ## Motion Slice 3: cache content-addressed — 2026-09-03
 
 - Claves en Rust (`motion-core/src/cache.rs`): FNV-1a 64 `motion/v1/{plan|doc|seg|final}/{hex}`, separadas por scope, doc, geometría de segmento y versión de modelo.
