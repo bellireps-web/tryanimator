@@ -4,7 +4,7 @@ compatibility_date = "2026-09-01"
 
 [vars]
 # Comma-separated origins allowed to call the proxy (exact match).
-ALLOWED_ORIGIN = "http://localhost:3000"
+ALLOWED_ORIGIN = "http://localhost:3000,https://tryanimator.pages.dev,https://tryanimator.com,https://www.tryanimator.com"
 # Best-effort per-isolate rate limit (see README: harden with CF Rate Limiting in prod).
 RATE_LIMIT_PER_MIN = "60"
 # Stock image API base (final shape lands when the API is supplied).
