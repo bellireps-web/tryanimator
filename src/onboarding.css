@@ -6,6 +6,7 @@
 .auth-visual-veil{position:absolute;inset:0;background:linear-gradient(90deg,transparent 55%,rgba(6,5,17,.55) 100%)}
 .auth-panel{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:32px;overflow-y:auto;background:#060511}
 .auth-card-slot{display:flex;justify-content:center;width:100%}
+.auth-notice{margin:0;color:#fff;font:600 16px/22px 'Figtree',sans-serif;text-align:center}
 .auth-loading{color:#9899A4;font:500 15px/20px 'Figtree',sans-serif;padding:40px 0}
 .auth-form-wrap{display:flex;flex-direction:column;align-items:center}
 .auth-mode-switch{margin-top:14px;background:none;border:0;color:#9899A4;font:500 14px/20px 'Figtree',sans-serif;cursor:pointer;padding:4px 8px}

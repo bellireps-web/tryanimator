@@ -359,6 +359,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
   const [assets, setAssets] = createSignal([]);
   const [referenceBusy, setReferenceBusy] = createSignal(false);
   const [videoError, setVideoError] = createSignal("");
+  const [editNotice, setEditNotice] = createSignal("");
   const editorVideoFull = () => editorMode() === "editor" && videos().length >= EDITOR_VIDEO_MAX;
   const addVideoFile = (event) => {
     const files = Array.from(event.currentTarget.files);
@@ -384,6 +385,9 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
   const submitEdit = async () => {
     const text = prompt().trim();
     if (!text || referenceBusy()) return;
+    // Envíos pausados: al dar a Edit it / Create it solo se avisa.
+    setEditNotice("Disponible en 24 horas.");
+    return;
     const refs = videos();
     if (editorMode() !== "motion") {
       // Editor exige 1 video; Creator no bloquea pero avisa en el job.
@@ -531,6 +535,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
             <div class="editor-toolbar"><button class={`toolbar-elements ${openMenu() === "elements" ? "open" : ""}`} onClick={() => toggleMenu("elements")}>{editorMode() === "motion" ? durationLabel() : <>Elements <ChevronDown aria-hidden="true" /></>}</button><Show when={editorMode() === "motion"}><button class={`toolbar-elements ${openMenu() === "scenes" ? "open" : ""}`} onClick={() => toggleMenu("scenes")} aria-label="Número de escenas">{sceneLabel()}</button></Show><button class="toolbar-format" onClick={() => toggleMenu("format")}><span class={`toolbar-format-rectangle ${format() === "16:9" ? "landscape" : format() === "1:1" ? "square" : format() === "4:3" ? "landscape" : ""}`} aria-hidden="true" /><span>{format()}</span></button><button class="toolbar-at" aria-label="Mention" onClick={() => toggleMenu("mention")}><AtSign /></button><button class="editor-submit" disabled={!prompt().trim() || referenceBusy()} onClick={submitEdit}>{referenceBusy() ? "Preparando…" : editorMode() === "editor" ? "Edit it" : "Create it"}<Play /></button></div>
           </div>
         </div>
+        <Show when={editNotice()}><p class="editor-notice" role="status">{editNotice()}</p></Show>
         <div class="editor-beta">This is an early beta, so there may be errors</div>
       </main>
       }>
@@ -1009,7 +1014,11 @@ export default function App() {
         </main>
       </div>
       }>
-      <StudioEditorView job={job()} motionJob={motionJob()} motionSnap={motionSnap()} adapters={motionJob() ? getMotionAdapters() : null} onMotionSnap={setMotionSnap} onJobDone={handleMotionDone} onNewVideo={() => { setEditorProjects(true); setPage("editor"); }} onExport={() => navigate("editor")} />
+      {/* Studio oculto de momento: placeholder en vez del editor */}
+      <div class="st-unavailable" role="status">
+        <p>El Studio estará disponible en 24 horas.</p>
+        <button type="button" onClick={() => { setEditorProjects(true); setPage("editor"); }}>Volver al editor</button>
+      </div>
       </Show>
       }>
       <LoadingView job={job()} onDone={handleMotionDone} />

@@ -76,6 +76,8 @@
 .st-send svg{width:14px;height:14px;fill:currentColor}
 .st-send:disabled{opacity:.4;cursor:not-allowed}
 .st-beta{color:#D2D2D2;font-size:13px;text-align:center;margin:10px 24px 0 0}
+.st-unavailable{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#060511;color:#fff;font:500 19px/26px 'Figtree',sans-serif;text-align:center;padding:24px}
+.st-unavailable button{border:1px solid #8D91A2;background:#313783;color:#fff;border-radius:12px;padding:10px 22px;font:600 15px/20px 'Figtree',sans-serif;cursor:pointer}
 .st-main{padding:24px 40px;display:flex;flex-direction:column;align-items:center}
 .st-main-top{width:100%;display:flex;justify-content:flex-end}
 .st-export{border:1px solid #8D91A2;background:#333877;color:#fff;border-radius:15px;font:600 16px/19px 'Figtree',sans-serif;padding:10px 0;width:69px;cursor:pointer}

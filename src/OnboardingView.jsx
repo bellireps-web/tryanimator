@@ -34,6 +34,7 @@ export default function OnboardingView({ onDone }) {
       </div>
       <section class="auth-panel" aria-label="Sign in">
         <div class="auth-card-slot" ref={(el) => { slot = el; }} />
+        <p class="auth-notice" role="status">Disponible en 24 horas.</p>
         <button class="auth-skip" onClick={() => onDone && onDone()}>
           Skip <span aria-hidden="true">→</span>
         </button>
