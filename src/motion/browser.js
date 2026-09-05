@@ -16,6 +16,7 @@ import { ProxyAiAdapter } from "./jobs.js";
 import { MotionCache, IndexedDBBackend } from "../cache/store.js";
 import { segmentKey } from "../cache/keys.js";
 import { encodeSegment } from "../../web-render/src/index.js";
+import { createAuthoredScorer } from "../../web-render/src/authored.js";
 import { proxyError, fetchTracks, fetchSfx, buildAudioTimeline, renderAudioBuffer } from "./audio.js";
 import * as mediabunny from "mediabunny";
 
@@ -59,7 +60,7 @@ function defaultLoadElement(url, ImageImpl) {
  * Load a drawable for a paint image ref. `stock:<query>` searches the
  * proxy; anything else loads as a direct URL (uploader object URLs).
  */
-export function createImageLoader({ proxyBase, appToken, fetchImpl = fetch, loadElement, ImageImpl } = {}) {
+export function createImageLoader({ proxyBase, appToken, fetchImpl = (...args) => fetch(...args), loadElement, ImageImpl } = {}) {
   const load = loadElement || ((url) => defaultLoadElement(url, ImageImpl || Image));
   return {
     async load(ref) {
@@ -91,12 +92,13 @@ function defaultCreateCanvas(w, h) {
 
 /**
  * Segment renderer with per-segment cache reuse. Returns
- * { segments: [stats], packets: [serializable packets in order], dims }.
- * The mux rebuilds EncodedVideoChunks from packets.
+ * { segments: [stats], packets: [serializable packets in order], dims, decoderConfig }.
+ * The mux rebuilds EncodedVideoChunks from packets + decoderConfig (SPS/PPS).
+ * Authored HyperFrames docs flow through `docs` into the frame encoder.
  */
 export function createSegmentRenderer({ encode = encodeSegment, createCanvas = defaultCreateCanvas } = {}) {
   return {
-    async renderSegments(plan, { dims, images, segments: segmentList, cache, planKey, onProgress } = {}) {
+    async renderSegments(plan, { dims, images, segments: segmentList, cache, planKey, docs, onProgress } = {}) {
       if (!Array.isArray(segmentList) || !segmentList.length) {
         throw codedError("bad_segment", "no segments to render");
       }
@@ -107,12 +109,17 @@ export function createSegmentRenderer({ encode = encodeSegment, createCanvas = d
       const canvas = createCanvas(w, h);
       const stats = [];
       const packets = [];
+      let decoderConfig = null;
       for (let done = 0; done < segmentList.length; done++) {
         const seg = segmentList[done];
         const key = segmentKey(planKey, seg.index, seg.startFrame, seg.frameCount);
         let record = cache ? await cache.get(key) : null;
+        // Cachés viejas (sin decoderConfig) no sirven para muxear: re-encode.
+        if (record && done === 0 && !record.decoderConfig) {
+          record = null;
+        }
         if (!record) {
-          const encoded = await encode(plan, seg, canvas, images);
+          const encoded = await encode(plan, seg, canvas, images, { docs });
           const segPackets = (encoded.chunks || []).map((chunk) => ({
             data: chunk.data,
             type: chunk.type,
@@ -123,14 +130,16 @@ export function createSegmentRenderer({ encode = encodeSegment, createCanvas = d
           record = {
             stats: { index: seg.index, chunks: segPackets.length, keyframes: encoded.keyframes || 0, bytes },
             packets: segPackets,
+            decoderConfig: encoded.decoderConfig || null,
           };
           if (cache) await cache.put(key, record, Math.max(bytes, 1));
         }
+        if (done === 0 && record.decoderConfig && !decoderConfig) decoderConfig = record.decoderConfig;
         stats.push(record.stats);
         for (const packet of record.packets || []) packets.push(packet);
         if (onProgress) onProgress(done + 1, segmentList.length);
       }
-      return { segments: stats, packets, dims: [w, h] };
+      return { segments: stats, packets, dims: [w, h], decoderConfig };
     },
   };
 }
@@ -188,7 +197,7 @@ export async function encodeAudioPackets(audioBuffer) {
  * music/sfx. Resolves with the MP4 bytes (Uint8Array).
  */
 export function createMuxer(
-  { media = mediabunny, proxyBase, appToken, fetchImpl = fetch, encodeAudio = encodeAudioPackets } = {},
+  { media = mediabunny, proxyBase, appToken, fetchImpl = (...args) => fetch(...args), encodeAudio = encodeAudioPackets } = {},
 ) {
   return {
     async mux({ plan, segmentStats }) {
@@ -207,6 +216,25 @@ export function createMuxer(
         output.addAudioTrack(audioSource);
       }
       await output.start();
+      // Mediabunny exige decoderConfig (SPS/PPS) en el primer add().
+      let videoMeta = undefined;
+      const dc = segmentStats && segmentStats.decoderConfig;
+      if (dc && dc.description) {
+        try {
+          const desc = dc.description instanceof Uint8Array ? dc.description : new Uint8Array(dc.description);
+          videoMeta = {
+            decoderConfig: {
+              codec: dc.codec || "avc1.640028",
+              codedWidth: dc.codedWidth,
+              codedHeight: dc.codedHeight,
+              description: desc.buffer.slice(desc.byteOffset, desc.byteOffset + desc.byteLength),
+            },
+          };
+        } catch {
+          videoMeta = undefined;
+        }
+      }
+      let firstVideo = true;
       for (const packet of videoPackets) {
         const chunk = new EncodedVideoChunk({
           type: packet.type,
@@ -214,7 +242,8 @@ export function createMuxer(
           duration: packet.duration,
           data: packet.data,
         });
-        await videoSource.add(media.EncodedPacket.fromEncodedChunk(chunk));
+        await videoSource.add(media.EncodedPacket.fromEncodedChunk(chunk), firstVideo ? videoMeta : undefined);
+        firstVideo = false;
       }
       if (audioSource) {
         for (const packet of audioPackets) {
@@ -238,7 +267,7 @@ async function collectAudioPackets(plan, { proxyBase, appToken, fetchImpl, encod
   if (!cues) return [];
   if (!proxyBase) throw codedError("proxy_not_configured", "audio fetch needs the proxy URL");
   const music = plan.audio.music_track_id
-    ? await fetchTracks(proxyBase, appToken, (plan.style && plan.style.id) || "ambient", fetchImpl).then((tracks) =>
+    ? await fetchTracks(proxyBase, appToken, "ambient", fetchImpl).then((tracks) =>
         tracks.find((track) => track.id === plan.audio.music_track_id),
       )
     : null;
@@ -265,7 +294,7 @@ async function collectAudioPackets(plan, { proxyBase, appToken, fetchImpl, encod
  * the AI adapter throws proxy_not_configured visibly instead of guessing.
  */
 export function createBrowserAdapters(options = {}) {
-  const { proxyBase, appToken, model, fetchImpl = fetch } = options;
+  const { proxyBase, appToken, model, fetchImpl = (...args) => fetch(...args) } = options;
   return {
     ai: new ProxyAiAdapter({ proxyBase, appToken, model, fetchImpl }),
     docs: new Map(),
@@ -279,6 +308,9 @@ export function createBrowserAdapters(options = {}) {
       fetchImpl,
       encodeAudio: options.encodeAudio,
     }),
+    // Motion scorer for authored docs (lazy stage: safe to construct in Node,
+    // throws no_dom only if actually scored without a document).
+    authored: options.authored || createAuthoredScorer(),
     validate: null,
   };
 }

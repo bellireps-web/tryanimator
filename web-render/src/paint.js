@@ -76,9 +76,10 @@ function paintOp(ctx, op, images) {
       return;
     }
     case "authored": {
-      const error = new Error(`authored HyperFrames doc needs vendored runtime: ${op.doc_id}`);
-      error.code = "authored_not_supported";
-      throw error;
+      // Sync interpreter cannot run DOM: the async path (renderFrameAsync +
+      // authored runtime) executes these ops before painting. Skipped here so
+      // sync previews still compose the plan base instead of failing.
+      return;
     }
     default: {
       const error = new Error(`unknown draw op: ${op && op.op}`);

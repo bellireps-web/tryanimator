@@ -1,79 +1,15 @@
 import { createSignal, onMount, onCleanup, Show, For } from "solid-js";
 import { Sparkles } from "lucide-solid";
-import { runMotionJob } from "./motion/jobs.js";
 import "./studio.css";
-
-const MOTION_PHASE = {
-  queued: "En cola",
-  resolving: "Resolviendo estilo y duración",
-  authoring: "Authoring escenas",
-  rendering: "Renderizando segmentos",
-  done: "Listo",
-  failed: "Error",
-};
-
-function MotionLoading({ motion, onDone, onBack }) {
-  const { job: motionJob, adapters, onSnap } = motion;
-  const [snap, setSnap] = createSignal({ state: "queued", progress: 0 });
-  let alive = true;
-  let finished = false;
-
-  onMount(() => {
-    runMotionJob(motionJob, adapters, (snapshot) => {
-      if (!alive) return;
-      setSnap(snapshot);
-      if (onSnap) onSnap({ ...snapshot });
-    }).then(() => {
-      if (!alive || finished) return;
-      finished = true;
-      if (motionJob.state === "done") {
-        setTimeout(() => { if (alive) onDone(motionJob); }, 400);
-      }
-    });
-  });
-  onCleanup(() => { alive = false; });
-
-  const state = () => snap().state;
-  const value = () => Math.round((snap().progress || 0) * 100);
-  const error = () => motionJob.error;
-  const [cw, ch] = [270, 480];
-
-  return (
-    <div class="ld-page">
-      <div class="ld-card">
-        <div class="ld-ratio">{motionJob.input.ratio}</div>
-        <div class="ld-label">Motion · el agente está creando</div>
-        <div class="ld-label dim">{motionJob.input.prompt}</div>
-        <div class="ld-dream" style={{ width: `${cw}px`, height: `${ch}px` }} role="img" aria-label={`Generando motion: ${MOTION_PHASE[state()] ?? state()}, ${value()}%`}>
-          <span class="blob b1" aria-hidden="true" />
-          <span class="blob b2" aria-hidden="true" />
-          <span class="blob b3" aria-hidden="true" />
-          <span class="grain" aria-hidden="true" />
-          <span class="vignette" aria-hidden="true" />
-          <span class="ld-pill"><Sparkles />{MOTION_PHASE[state()] ?? state()}…</span>
-          <span class="ld-big">{value()}%</span>
-        </div>
-        <div class="ld-bar" style={{ width: `${Math.min(cw, 420)}px` }} role="progressbar" aria-label="Progreso de generación" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value()}>
-          <div class="ld-track">
-            <div class="ld-fill" style={{ transform: `scaleX(${(snap().progress || 0)})` }} />
-          </div>
-        </div>
-        <Show when={state() === "failed"} fallback={<div class="ld-sub">{MOTION_PHASE[state()] ?? state()}</div>}>
-          <div class="ld-sub">Error [{error() && error().code}]: {error() && error().message}</div>
-          <button type="button" class="ld-tag" onClick={onBack}>Volver al editor</button>
-        </Show>
-      </div>
-    </div>
-  );
-}
 
 const TOTAL_MS = 12000;
 // Element -> fase del pipeline. El resto queda en cola del agente (visible, sin aplicar).
 const STAGE_OF = { "Remove Silences": "silence", Captions: "captions", "B Rolls": "brolls" };
 const CARD_BOX = { "16:9": [640, 360], "9:16": [270, 480], "1:1": [400, 400], "4:3": [480, 360] };
 
-export default function LoadingView({ job, onDone, motion, onBack }) {
-  if (motion) return <MotionLoading motion={motion} onDone={onDone} onBack={onBack} />;
+export default function LoadingView({ job, onDone }) {
+  // Mock theater for the non-motion editor path (no backend generates here).
+  // Motion jobs skip this screen entirely: the Studio runs them in-situ.
   const ratio = job.ratio ?? "9:16";
   const selected = job.elements?.length
     ? job.elements
@@ -106,26 +42,34 @@ export default function LoadingView({ job, onDone, motion, onBack }) {
     raf = requestAnimationFrame(tick);
   };
 
-  const phase = () => {
-    const v = value() / 100;
+  const steps = () => {
     const p = plan();
-    const nSil = p ? p.cuts.filter((c) => c.type === "silence").length : null;
-    const nCap = p?.captions.length ?? null;
-    const nBr = p?.brolls.length ?? null;
-    if (v < PHASES[0][0]) return PHASES[0][1];
-    if (v < PHASES[1][0]) return nSil === null ? "Cortando silencios" : `Cortando ${nSil} silencio${nSil === 1 ? "" : "s"}`;
-    if (v < PHASES[2][0]) return nCap === null ? "Escribiendo captions" : `Escribiendo ${nCap} captions`;
-    if (v < PHASES[3][0]) return nBr === null ? "Colocando b-rolls" : `Colocando ${nBr} b-rolls`;
-    return PHASES[4][1];
+    const n = (k, all, word) => {
+      if (!all) return word;
+      const c = k === "silence" ? all.cuts.filter((x) => x.type === "silence").length
+        : k === "captions" ? all.captions.length : all.brolls.length;
+      return `${word} (${c})`;
+    };
+    const mid = selected.filter((e) => e in STAGE_OF).map((e) => n(STAGE_OF[e], p,
+      e === "Remove Silences" ? "Cortando silencios" : e === "Captions" ? "Escribiendo captions" : "Colocando b-rolls"));
+    return ["Analizando prompt", ...mid, "Montando timeline"];
+  };
+  const phase = () => {
+    const s = steps();
+    return s[Math.min(s.length - 1, Math.floor((value() / 100) * s.length))];
   };
 
   const [cw, ch] = CARD_BOX[ratio] ?? CARD_BOX["16:9"];
+  const vids = job.videos ?? [];
 
   return (
     <div class="ld-page">
       <div class="ld-card">
         <div class="ld-ratio">{ratio}</div>
         <div class="ld-label">Ratio del video · el agente está creando</div>
+        <Show when={vids.length}>
+          <div class="ld-label">Video: {vids[0].name ?? "sin nombre"}{vids.length > 1 ? ` (+${vids.length - 1})` : ""}</div>
+        </Show>
         <div class="ld-dream" style={{ width: `${cw}px`, height: `${ch}px` }} role="img" aria-label={`Generando video ${ratio}: ${phase()}, ${Math.floor(value())}%`}>
           <span class="blob b1" aria-hidden="true" />
           <span class="blob b2" aria-hidden="true" />
@@ -141,8 +85,11 @@ export default function LoadingView({ job, onDone, motion, onBack }) {
           </div>
         </div>
         <div class="ld-sub">quedan ~{Math.ceil(left())} s · {phase()}</div>
-        <Show when={plan()?.timelineDuration}>
-          <div class="ld-sub dim">timeline estimada: {plan().timelineDuration.toFixed(1)} s</div>
+        <div class="ld-tags" aria-label="Elements seleccionados">
+          <For each={selected}>{(e) => <span class={`ld-tag ${e in STAGE_OF ? "" : "queued"}`}>{e}</span>}</For>
+        </div>
+        <Show when={queued.length}>
+          <div class="ld-sub dim">en cola del agente: {queued.join(", ")}</div>
         </Show>
       </div>
     </div>

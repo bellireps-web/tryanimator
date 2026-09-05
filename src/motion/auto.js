@@ -1,5 +1,6 @@
 /**
- * Auto style/duration resolution + brand plumbing (Slice 4).
+ * Auto duration resolution + brand plumbing (Slice 4). Free canvas: there
+ * are no preset styles, so resolution only decides duration and scenes.
  *
  * Split by testability:
  * - PURE (tested here): palette extraction from pixels, prompt builders
@@ -8,8 +9,6 @@
  * - LIVE (needs proxy + key): sending the prompts, sampling video frames
  *   in the browser. Kept thin and marked; no logic hides there.
  */
-import { presetIds } from "../../web-render/src/presets.js";
-
 export const PROMPT_CHAR_CAP = 4000;
 export const MOTION_MODEL = "muse-spark-1.3";
 
@@ -48,36 +47,124 @@ function clip(text, cap) {
 
 const RESOLVE_SYSTEM = [
   "You resolve Auto fields of a MotionPlan v1 for a 1080p30 HyperFrames render.",
-  `Available presets: ${presetIds().join(", ")}.`,
-  "Reply with JSON only: {\"duration_secs\": 1..60, \"style_id\": \"<preset>\", \"style_version\": \"<pinned>\",",
+  "Free canvas: there are no preset styles. Every scene is a blank canvas for",
+  "a full-bleed authored HyperFrames document (HTML+GSAP).",
+  "Return exactly ONE scene covering the full duration, unless the user",
+  "explicitly asks for multiple scenes, chapters or parts.",
+  "Reply with JSON only: {\"duration_secs\": 1..60,",
   " \"scenes\": [{\"duration_secs\": N, \"brief\": \"...\", \"text\": \"...\", \"transition\": \"cut|fade|slide\"}]}.",
   "Scene durations must sum to duration_secs. Never invent other fields.",
   "Optional per scene: \"visual\": {\"kind\": \"stock\", \"query\": \"...\"} for a photographic",
-  "backdrop (a short search query). Omit visual for brand-graphic scenes.",
+  "backdrop (a short search query). Omit visual for authored graphic scenes.",
 ].join(" ");
 
-/** Messages for POST /ai/chat to resolve Auto duration + style. */
-export function buildResolvePrompt({ prompt, ratio, palette = [], hasVideoReference = false }) {
+/**
+ * True when the user explicitly asks for a different duration.
+ * Pure: backstop so patches never resize the video unasked.
+ */
+export function wantsDurationChange(text) {
+  return /\b\d+\s*(s|seg|segs|segundos?)\b|duraci[óo]n|duration/i.test(String(text || ""));
+}
+
+/**
+ * Drop set_duration_secs ops the user did not ask for. Pure.
+ */
+export function filterUnaskedDurationOps(ops, text) {
+  if (!Array.isArray(ops) || wantsDurationChange(text)) return ops;
+  return ops.filter((op) => !op || op.op !== "set_duration_secs");
+}
+
+/**
+ * True when the user explicitly asks for several scenes/chapters/parts.
+ * Pure: the backstop for the single-scene default.
+ */
+export function wantsMultipleScenes(text) {
+  return /\b(\d+[\s-]*(escenas?|scenes?|parts?|partes|cap[ií]tulos?|chapters?)|varias?\s+escenas?|multiple\s+scenes?|several\s+scenes?|dos\s+escenas?|tres\s+escenas?|two\s+scenes?|three\s+scenes?|cap[ií]tulos|chapters)\b/i.test(
+    String(text || ""),
+  );
+}
+
+/**
+ * Merge a scene list into a single scene (durations add up, briefs/texts
+ * join, first transition and first usable visual win). Pure backstop so one
+ * stray multi-scene answer never splits the video.
+ */
+export function mergeScenesToOne(scenes) {
+  const list = (scenes || []).filter(Boolean);
+  if (list.length <= 1) return list.slice();
+  const duration_secs = list.reduce((sum, scene) => sum + (Number(scene.duration_secs) || 0), 0);
+  const firstVisual = list.find((scene) => scene.visual && typeof scene.visual === "object");
+  const merged = {
+    duration_secs,
+    brief: list.map((scene) => String(scene.brief || "")).filter(Boolean).join("; "),
+    text: list.map((scene) => String(scene.text || "")).filter(Boolean).join(" "),
+    transition: String(list[0].transition || "cut"),
+  };
+  if (firstVisual) merged.visual = firstVisual.visual;
+  return [merged];
+}
+
+/** Messages for POST /ai/chat to resolve Auto duration + scenes. Reference
+ *  images travel as multimodal parts with no steering text: the model sees
+ *  them, nothing tells it what to do with them. */
+export function buildResolvePrompt({ prompt, ratio, duration = "auto", sceneCount }) {
   const lines = [
     `prompt: ${clip(prompt, PROMPT_CHAR_CAP)}`,
     `ratio: ${ratio}`,
-    hasVideoReference
-      ? "video reference frames were sampled (motion language follows the reference)"
-      : "no video reference",
   ];
-  if (palette.length) lines.push(`reference palette: ${palette.join(", ")}`);
+  if (Number.isFinite(duration) && duration >= 1 && duration <= 60) {
+    lines.push(`target duration_secs: ${Math.round(duration)} (you must return duration_secs=${Math.round(duration)} and scenes must sum exactly to it)`);
+  } else {
+    lines.push("target duration_secs: auto (pick 1..60 and make scenes sum to it)");
+  }
+  const count = Math.floor(Number(sceneCount));
+  if (Number.isFinite(count) && count >= 1) {
+    lines.push(`target scenes: exactly ${count} scene brief(s) (explicit user choice, overrides the single-scene default; durations must still sum to duration_secs)`);
+  }
   return [
     { role: "system", content: RESOLVE_SYSTEM },
     { role: "user", content: lines.join("\n") },
   ];
 }
 
+/** Instructions+input for POST /ai/respond to resolve Auto duration + scenes. */
+export function buildResolveRespond({ prompt, ratio, duration = "auto", sceneCount }) {
+  const [, user] = buildResolvePrompt({ prompt, ratio, duration, sceneCount });
+  return { instructions: RESOLVE_SYSTEM, input: user.content };
+}
+
 /** Messages for POST /ai/chat to author one HyperFrames scene document. */
-export function buildScenePrompt({ prompt, sceneBrief, styleId, brand }) {
+export function buildScenePrompt({ prompt, sceneBrief, brand, sceneDuration, ratio, revision, currentDoc }) {
+  const secs = Number.isFinite(Number(sceneDuration))
+    ? Math.min(60, Math.max(1, Math.round(Number(sceneDuration))))
+    : null;
+  const vertical = String(ratio || "").startsWith("9:");
   return [
     {
       role: "system",
-      content: `Author one deterministic HyperFrames scene (HTML+GSAP) in preset ${styleId}. Reply with the document only, no prose.`,
+      content:
+        `Author one deterministic HyperFrames scene (HTML+GSAP) on a blank canvas. Reply with the document only, no prose. ` +
+        "Rules: build ONE master gsap timeline" +
+        (secs ? ` covering exactly ${secs}s` : "") +
+        ", with VISIBLE motion from the first to the last second (no static holds: " +
+        "stagger entrances, loops and counters across the whole timeline, never front-load " +
+        "everything and freeze); start it paused (the runner seeks it by fraction); no random, " +
+        "Date, or fetch; no external scripts (gsap and fonts are provided); all CSS inline in <style>. " +
+        "Animate EVERYTHING from the very first frame: every text, object, shape, bar, dot, badge and background " +
+        "layer gets its own tween (entrance + ambient motion) — nothing may appear static or pop in without animation. " +
+        "Build the scene STEP BY STEP in clearly separated parts: first the title animates in alone, then the second " +
+        "element, then the next, each with its own staggered entrance window — never reveal everything at once. " +
+        "Pacing: the build-up completes in the first half (title inside the first second); the second half keeps " +
+        "everything alive with ambient motion and counters. By 40% of the duration every element must already " +
+        "be visible — no element waits until the second half to appear. " +
+        "At time 0 almost nothing is visible except the background: every element must start hidden and enter later. " +
+        (currentDoc
+          ? "A CURRENT document is provided below: edit THAT document with the smallest possible change — keep layout, palette, structure and every unrelated element; change ONLY what the revision requires. "
+          : "") +
+        (vertical
+          ? "Layout is vertical 9:16: stack content top-to-bottom, huge type (no wide 16:9 frames, no min-widths above 520px, no side-by-side columns)."
+          : "Layout is horizontal: you may use wide frames and side-by-side columns.") +
+        " Full-bleed is mandatory: html and body are exactly the frame size — root content must span the FULL width and FULL height (no max-width wrappers, no centered narrow frames, no empty margins); every pixel must be intentional background or content.",
     },
     {
       role: "user",
@@ -85,22 +172,63 @@ export function buildScenePrompt({ prompt, sceneBrief, styleId, brand }) {
         `video: ${clip(prompt, PROMPT_CHAR_CAP)}`,
         `scene: ${clip(sceneBrief, 1000)}`,
         `brand colors: ${(brand.colors || []).join(", ")}; font: ${brand.font || "Figtree"}`,
+        `ratio: ${ratio || "9:16"}`,
+        ...(revision ? [`user revision (must be visible in the rebuild): ${clip(revision, 500)}`] : []),
+        ...(currentDoc ? [`current document (EDIT THIS ONE — minimal changes only):\n${clip(currentDoc, 12000)}`] : []),
       ].join("\n"),
     },
   ];
 }
 
-/** Messages for POST /ai/chat to turn a chat message into patch ops. */
+const PATCH_OPS_LIST =
+  '{"op":"set_duration_secs","secs":N},' +
+  '{"op":"set_brand","colors":[],"font":""},' +
+  '{"op":"update_scene","index":N,"text":"...","brief":"...","duration_secs":N},{"op":"add_scene","index":N},{"op":"remove_scene","index":N},' +
+  '{"op":"set_music_track","track_id":null},{"op":"set_seed","seed":N}';
+const PATCH_OPS_DESC = `{"ops":[${PATCH_OPS_LIST}]}. Ops use 0-based scene indexes.`;
+
+/** Instructions+input for POST /ai/respond to turn a chat message into patch ops. */
+export function buildPatchRespond(planJson, message, history = "") {
+  const convo = String(history || "").trim().slice(0, 3000);
+  return {
+    instructions:
+      "Turn the user message into MotionPlan patch ops. Reply with JSON only, no prose outside the JSON: " +
+      `{"ops":[${PATCH_OPS_LIST}], "message":"short human reply to the user in their language (1-2 sentences, say what will change)"}. ` +
+      "Only emit set_duration_secs when the user explicitly asks for a different duration. " +
+      "The human reply goes in the message field, never as prose around the JSON.",
+    input:
+      `plan: ${clip(planJson, 8000)}\nmessage: ${clip(message, 2000)}` +
+      (convo ? `\nconversation so far (use it as context for this turn):\n${convo}` : ""),
+  };
+}
+
+/**
+ * Flatten thread messages into compact context lines for the agent.
+ * The just-sent user text travels separately as `message`, so the trailing
+ * duplicate is dropped. Keeps the last turns, capped. Pure.
+ */
+export function threadHistoryForAgent(messages, currentText, maxTurns = 6, maxChars = 3000) {
+  const lines = [];
+  for (const m of messages || []) {
+    if (!m || (m.kind !== "user" && m.kind !== "ai")) continue;
+    const text = String(m.text || "").trim();
+    if (!text) continue;
+    lines.push(`${m.kind === "user" ? "user" : "assistant"}: ${text}`);
+  }
+  const cur = String(currentText || "").trim();
+  if (cur && lines.length && lines[lines.length - 1] === `user: ${cur}`) lines.pop();
+  const out = lines.slice(-Math.max(1, maxTurns)).join("\n");
+  return out.length > maxChars ? out.slice(-maxChars) : out;
+}
+/** Messages for POST /ai/chat to turn a chat message into patch ops (fallback path). */
 export function buildPatchPrompt(planJson, message) {
   return [
     {
       role: "system",
       content:
         "Turn the user message into MotionPlan patch ops. Reply with JSON only: " +
-        '{"ops":[{"op":"set_duration_secs","secs":N},{"op":"set_style_preset","id":"x","version":"y"},' +
-        '{"op":"set_style_auto"},{"op":"set_brand","colors":[],"font":""},' +
-        '{"op":"update_scene","index":N},{"op":"add_scene","index":N},{"op":"remove_scene","index":N},' +
-        '{"op":"set_music_track","track_id":null},{"op":"set_seed","seed":N}]}. Ops use 0-based scene indexes.',
+        PATCH_OPS_DESC +
+        " Only emit set_duration_secs when the user explicitly asks for a different duration.",
     },
     {
       role: "user",
@@ -118,21 +246,15 @@ export function applyAutoResolution(plan, resolution) {
   if (!Number.isFinite(secs) || secs < 1 || secs > 60) {
     throw codedError("bad_resolution", "duration_secs must be within 1..=60");
   }
-  const { style_id, style_version } = resolution || {};
-  if (typeof style_id !== "string" || !style_id || typeof style_version !== "string" || !style_version) {
-    throw codedError("bad_resolution", "style_id and style_version are required");
-  }
-  if (!presetIds().includes(style_id)) {
-    throw codedError("unknown_preset", `preset: ${style_id}`);
-  }
-  return { ...plan, duration: secs, style: { id: style_id, version: style_version } };
+  // Free canvas: no style to validate. Extra style_* fields are ignored.
+  return { ...plan, duration: secs, style: "free" };
 }
 
 /**
  * Validate a model-provided scene visual. Only paintable kinds pass:
  * stock (query searched via the proxy) and asset (uploader-provided id).
- * Anything else — including authored, which needs the vendored HyperFrames
- * runtime — falls back to the authored default the machine fills next.
+ * Anything else falls back to the authored default the machine fills next
+ * (an authored HyperFrames doc executed by the authored runtime).
  * Mirrors the Rust Visual contract (asset id / stock query non-empty).
  */
 export function resolveSceneVisual(visual, index = 0) {
@@ -230,5 +352,3 @@ export async function sampleVideoFrames(video, { fps = 1, width = 160 } = {}) {
   }
   return frames;
 }
-
-export { presetIds };

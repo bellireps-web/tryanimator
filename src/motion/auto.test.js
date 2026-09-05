@@ -3,10 +3,17 @@ import assert from "node:assert/strict";
 import {
   extractPalette,
   buildResolvePrompt,
+  buildResolveRespond,
   buildScenePrompt,
   buildPatchPrompt,
+  buildPatchRespond,
+  threadHistoryForAgent,
+  wantsDurationChange,
+  filterUnaskedDurationOps,
   applyAutoResolution,
   applyResolvedScenes,
+  wantsMultipleScenes,
+  mergeScenesToOne,
   googleFontUrl,
   brandCssVars,
   PROMPT_CHAR_CAP,
@@ -56,40 +63,126 @@ test("prompt builders cap and shape payloads", () => {
   const messages = buildResolvePrompt({
     prompt: "x".repeat(9000),
     ratio: "9:16",
-    palette: ["#7069AA"],
-    hasVideoReference: true,
   });
   assert.equal(messages[0].role, "system");
   assert.match(messages[0].content, /muse|JSON only|duration_secs/);
-  assert.ok(messages[1].content.length <= PROMPT_CHAR_CAP + 200);
-  assert.match(messages[1].content, /video reference frames were sampled/);
+  assert.ok(messages[1].content.length <= PROMPT_CHAR_CAP + 300);
+  // References travel as image parts only: no steering text about them.
+  assert.doesNotMatch(messages[1].content, /reference/i);
+  assert.doesNotMatch(messages[1].content, /palette/i);
+
+  const timedResolve = buildResolvePrompt({ prompt: "promo", ratio: "9:16", duration: 5 });
+  assert.match(timedResolve[1].content, /target duration_secs: 5/);
+  assert.doesNotMatch(timedResolve[1].content, /reference/i);
 
   const scene = buildScenePrompt({
     prompt: "promo",
     sceneBrief: "opening",
-    styleId: "kinetic-type",
     brand: { colors: ["#FFF"], font: "Figtree" },
   });
-  assert.match(scene[0].content, /kinetic-type/);
+  assert.match(scene[0].content, /blank canvas/);
+
+  const timed = buildScenePrompt({
+    prompt: "promo",
+    sceneBrief: "opening",
+    brand: { colors: ["#FFF"], font: "Figtree" },
+    sceneDuration: 5,
+  });
+  assert.match(timed[0].content, /exactly 5s/);
+  assert.match(timed[0].content, /ONE master gsap timeline/);
+  assert.match(timed[0].content, /Animate EVERYTHING from the very first frame/);
+  assert.match(timed[0].content, /STEP BY STEP/);
+  assert.match(timed[0].content, /At time 0 almost nothing is visible/);
+  assert.match(timed[0].content, /build-up completes in the first half/);
+  assert.match(timed[0].content, /By 40% of the duration every element must already/);
+
+  const vertical = buildScenePrompt({
+    prompt: "promo",
+    sceneBrief: "opening",
+    brand: { colors: ["#FFF"], font: "Figtree" },
+    sceneDuration: 5,
+    ratio: "9:16",
+  });
+  assert.match(vertical[0].content, /vertical 9:16/);
+  assert.match(vertical[1].content, /ratio: 9:16/);
 
   const patch = buildPatchPrompt('{"seed":1}', "make it longer");
   assert.match(patch[0].content, /patch ops/);
+  assert.match(patch[0].content, /update_scene/);
+  assert.match(patch[0].content, /brief/);
   assert.match(patch[1].content, /make it longer/);
+
+  const respond = buildPatchRespond('{"seed":1}', "hazlo rojo");
+  assert.match(respond.instructions, /"message"/);
+  assert.match(respond.instructions, /never as prose/);
+  assert.match(respond.instructions, /Only emit set_duration_secs/);
+  assert.match(respond.input, /hazlo rojo/);
+  assert.doesNotMatch(respond.input, /conversation so far/);
+
+  const withHistory = buildPatchRespond('{"seed":1}', "más rayos", "user: tormenta\nassistant: Listo.");
+  assert.match(withHistory.input, /conversation so far/);
+  assert.match(withHistory.input, /user: tormenta/);
 });
 
-test("applyAutoResolution validates and applies", () => {
-  const plan = { duration: "auto", style: "auto", seed: 1 };
-  const resolved = applyAutoResolution(plan, {
-    duration_secs: 30,
-    style_id: "kinetic-type",
-    style_version: "1.0.0",
-  });
-  assert.equal(resolved.duration, 30);
-  assert.deepEqual(resolved.style, { id: "kinetic-type", version: "1.0.0" });
-  assert.equal(plan.duration, "auto", "input plan is not mutated");
+test("buildResolveRespond splits instructions from input", () => {
+  const { instructions, input } = buildResolveRespond({ prompt: "promo", ratio: "9:16", duration: 5 });
+  assert.match(instructions, /Free canvas/);
+  assert.match(instructions, /JSON only/);
+  assert.match(input, /target duration_secs: 5/);
+  assert.doesNotMatch(input, /Free canvas/);
+});
 
-  assert.equal(codeOf(() => applyAutoResolution(plan, { duration_secs: 61, style_id: "kinetic-type", style_version: "1.0.0" })), 'bad_resolution');
-  assert.equal(codeOf(() => applyAutoResolution(plan, { duration_secs: 10, style_id: "nope", style_version: "1.0.0" })), 'unknown_preset');
+test("threadHistoryForAgent compacts the thread without duplicating", () => {
+  const msgs = [
+    { kind: "user", text: "faro en tormenta" },
+    { kind: "ai", text: "Listo, tormenta intensa.", trace: "v2 · 1 escena" },
+    { kind: "ctx", text: "Motion: 1 escenas" },
+    { kind: "user", text: "más rayos" },
+  ];
+  const history = threadHistoryForAgent(msgs, "más rayos");
+  assert.ok(!history.includes("más rayos"), "current turn travels separately");
+  assert.match(history, /user: faro en tormenta/);
+  assert.match(history, /assistant: Listo, tormenta intensa/);
+  assert.ok(!history.includes("Motion: 1"), "ctx lines are skipped");
+  assert.equal(threadHistoryForAgent([], "hola"), "");
+  const long = threadHistoryForAgent([{ kind: "user", text: "x".repeat(5000) }, { kind: "user", text: "fin" }], "fin");
+  assert.ok(long.length <= 3000);
+});
+
+test("buildScenePrompt carries revision and currentDoc", () => {
+  const revised = buildScenePrompt({
+    prompt: "promo",
+    sceneBrief: "opening",
+    brand: { colors: ["#FFF"], font: "Figtree" },
+    revision: "quitale el neon",
+  });
+  assert.match(revised[1].content, /user revision.*quitale el neon/);
+  const plain = buildScenePrompt({ prompt: "promo", sceneBrief: "opening", brand: {} });
+  assert.doesNotMatch(plain[1].content, /user revision/);
+
+  const editing = buildScenePrompt({
+    prompt: "promo",
+    sceneBrief: "opening",
+    brand: {},
+    revision: "quitale el neon",
+    currentDoc: "<div>old</div>",
+  });
+  assert.match(editing[0].content, /smallest possible change/);
+  assert.match(editing[1].content, /EDIT THIS ONE/);
+  assert.match(editing[1].content, /<div>old<\/div>/);
+});
+
+test("applyAutoResolution validates duration and frees the canvas", () => {
+  const plan = { duration: "auto", style: "auto", seed: 1 };
+  const resolved = applyAutoResolution(plan, { duration_secs: 30 });
+  assert.equal(resolved.duration, 30);
+  assert.equal(resolved.style, "free");
+  assert.equal(plan.duration, "auto", "input plan is not mutated");
+  // Legacy style_* fields are ignored, never validated.
+  const legacy = applyAutoResolution(plan, { duration_secs: 10, style_id: "kinetic-type", style_version: "1.0.0" });
+  assert.equal(legacy.style, "free");
+
+  assert.equal(codeOf(() => applyAutoResolution(plan, { duration_secs: 61 })), 'bad_resolution');
   assert.equal(codeOf(() => applyAutoResolution(plan, null)), 'bad_resolution');
 });
 
@@ -123,6 +216,43 @@ test("applyResolvedScenes validates sum and fields", () => {
   assert.equal(codeOf(() => applyResolvedScenes(plan, [])), 'bad_resolution');
   assert.equal(codeOf(() => applyResolvedScenes(plan, [{ ...scenes[0], duration_secs: 5 }, scenes[1]])), 'bad_resolution');
   assert.equal(codeOf(() => applyResolvedScenes(plan, [{ ...scenes[0], brief: "  " }, scenes[1]])), 'bad_resolution');
+});
+
+test("duration lock: only when explicitly asked", () => {
+  assert.equal(wantsDurationChange("hazlo de 8 segundos"), true);
+  assert.equal(wantsDurationChange("cámbialo a 10s"), true);
+  assert.equal(wantsDurationChange("qué duración tiene"), true);
+  assert.equal(wantsDurationChange("quitale el neon"), false);
+  assert.equal(wantsDurationChange(""), false);
+  const ops = [{ op: "set_duration_secs", secs: 10 }, { op: "set_seed", seed: 1 }];
+  assert.deepEqual(filterUnaskedDurationOps(ops, "quitale el neon"), [{ op: "set_seed", seed: 1 }]);
+  assert.deepEqual(filterUnaskedDurationOps(ops, "hazlo de 8 segundos"), ops);
+  assert.equal(filterUnaskedDurationOps(null, "x"), null);
+});
+
+test("single scene by default, merge backstop, explicit multi", () => {
+  assert.equal(wantsMultipleScenes("haz un video"), false);
+  assert.equal(wantsMultipleScenes("dos escenas: apertura y cierre"), true);
+  assert.equal(wantsMultipleScenes("a 3-part story with chapters"), true);
+  assert.equal(wantsMultipleScenes("varias escenas por favor"), true);
+  assert.equal(wantsMultipleScenes("multiple scenes please"), true);
+  assert.equal(wantsMultipleScenes(""), false);
+
+  const merged = mergeScenesToOne([
+    { duration_secs: 2, brief: "open", text: "Hi", transition: "fade", visual: { kind: "stock", query: "neon" } },
+    { duration_secs: 3, brief: "close", text: "Bye", transition: "cut" },
+  ]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].duration_secs, 5);
+  assert.match(merged[0].brief, /open/);
+  assert.match(merged[0].brief, /close/);
+  assert.equal(merged[0].transition, "fade");
+  assert.deepEqual(merged[0].visual, { kind: "stock", query: "neon" });
+  assert.deepEqual(mergeScenesToOne([]), []);
+  assert.equal(mergeScenesToOne([{ duration_secs: 5 }]).length, 1);
+
+  const sys = buildResolvePrompt({ prompt: "x", ratio: "9:16" })[0].content;
+  assert.match(sys, /exactly ONE scene/);
 });
 
 test("brand font url and css vars", () => {

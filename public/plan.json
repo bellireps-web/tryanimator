@@ -120,6 +120,20 @@
       "t1": 18.45
     }
   ],
+  "elements": {
+    "requested": [
+      "Remove Silences",
+      "Captions",
+      "B Rolls"
+    ],
+    "applied": [
+      "Remove Silences",
+      "Captions",
+      "B Rolls"
+    ],
+    "queued": []
+  },
+  "sourceVideos": [],
   "timelineDuration": 26.4,
   "generatedBy": "editor/generate.py"
 }

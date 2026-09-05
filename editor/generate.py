@@ -13,6 +13,7 @@ Entrada unica para UI manual y agente IA:
 Regenerar:  python3 editor/generate.py
 Render (en tu maquina):  cd editor && npx hyperframes lint && npx hyperframes check
 """
+import argparse
 import html
 import json
 import os
@@ -31,6 +32,13 @@ FILLERS = {"um", "uh", "eh", "mmm", "mm", "hmm", "uhm", "er", "ah", "este", "pue
 # (indice de frase 0-based, fichero) — placeholder editorial, editable en plan.json
 BROLL_MAP = [(1, "media/broll-1.png"), (3, "media/broll-2.png"), (5, "media/broll-3.png")]
 
+# Elements del mock -> etapas del pipeline. Lo no mapeado queda en "queued" (agente).
+# HyperFrames presets: captions/transitions/motion-graphics van por bloques HF;
+# b-rolls usan assets; sounds van por librería audio; remove-silences por whisper local.
+# Sin preset visual: B Rolls, Sounds, Remove Silences (ver hyperframesPresets.js).
+ELEMENT_STAGES = {"Remove Silences": "silence", "Captions": "captions", "B Rolls": "brolls", "Sounds": "sounds", "Effects": "effects", "Transitions": "transitions", "Motion Graphics": "motion"}
+ALL_STAGES = ("silence", "captions", "brolls", "sounds", "effects", "transitions", "motion")
+
 W, H = 1080, 1920
 COMP_ID = "animator-promo"
 
@@ -40,17 +48,28 @@ def r3(x):
 
 
 def main():
+    ap = argparse.ArgumentParser(description="Animator HyperFrames editor — plan generator")
+    ap.add_argument("--only", nargs="+", choices=list(ALL_STAGES), default=list(ALL_STAGES))
+    ap.add_argument("--elements", default="", help="Elements UI separados por coma")
+    ap.add_argument("--videos", default="", help="Videos fuente separados por coma")
+    args = ap.parse_args()
+    requested = [e.strip() for e in args.elements.split(",") if e.strip()] or list(ELEMENT_STAGES)
+    applied = [e for e in requested if ELEMENT_STAGES.get(e) in args.only]
+    queued = [e for e in requested if e not in ELEMENT_STAGES]
+    enabled = {ELEMENT_STAGES[e] for e in applied}
+
     words = json.load(open(TRANSCRIPT))  # [{text, start, end}]
     assert words, "transcript vacio"
 
     # --- cortes: silencios + trims ---
     cuts = []
-    if words[0]["start"] > LEAD_TRIM:
-        cuts.append({"type": "trim-in", "sourceStart": 0.0, "sourceEnd": r3(words[0]["start"])})
-    for a, b in zip(words, words[1:]):
-        gap = b["start"] - a["end"]
-        if gap >= SILENCE_MIN:
-            cuts.append({"type": "silence", "sourceStart": r3(a["end"]), "sourceEnd": r3(b["start"])})
+    if "silence" in enabled:
+        if words[0]["start"] > LEAD_TRIM:
+            cuts.append({"type": "trim-in", "sourceStart": 0.0, "sourceEnd": r3(words[0]["start"])})
+        for a, b in zip(words, words[1:]):
+            gap = b["start"] - a["end"]
+            if gap >= SILENCE_MIN:
+                cuts.append({"type": "silence", "sourceStart": r3(a["end"]), "sourceEnd": r3(b["start"])})
     span_start = cuts[0]["sourceEnd"] if cuts and cuts[0]["type"] == "trim-in" else 0.0
     span_end = words[-1]["end"]
     trims = [c for c in cuts if c["type"] != "silence"]
@@ -92,6 +111,9 @@ def main():
                 continue
             captions.append({"text": text, "t0": r3(shift(a)), "t1": r3(shift(b))})
 
+    if "captions" not in enabled:
+        captions = []
+
     # --- rangos kept -> clips de audio ---
     kept = []
     cursor = span_start
@@ -111,7 +133,7 @@ def main():
 
     # --- b-rolls (tiempos de timeline) ---
     brolls = []
-    for sent_idx, src in BROLL_MAP:
+    for sent_idx, src in (BROLL_MAP if "brolls" in enabled else []):
         if sent_idx >= len(sentences):
             continue
         s = sentences[sent_idx]
@@ -127,6 +149,8 @@ def main():
         "keptRanges": [{"sourceStart": r3(s), "sourceEnd": r3(e)} for s, e in kept],
         "audioClips": audio_clips,
         "captions": captions, "brolls": brolls,
+        "elements": {"requested": requested, "applied": applied, "queued": queued},
+        "sourceVideos": [v.strip() for v in args.videos.split(",") if v.strip()],
         "timelineDuration": duration,
         "generatedBy": "editor/generate.py",
     }

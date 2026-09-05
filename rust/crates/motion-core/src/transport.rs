@@ -12,11 +12,6 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, PartialEq)]
 pub enum PatchOp {
     SetDurationSecs(f32),
-    SetStylePreset {
-        id: String,
-        version: String,
-    },
-    SetStyleAuto,
     SetBrand {
         colors: Vec<String>,
         font: String,
@@ -184,11 +179,6 @@ fn parse_patch_op(value: &Value) -> Result<PatchOp, ApiError> {
             Some(secs) => Ok(PatchOp::SetDurationSecs(secs as f32)),
             None => Err(error_type("secs", "a number")),
         },
-        "set_style_preset" => Ok(PatchOp::SetStylePreset {
-            id: get_str(obj, "id")?,
-            version: get_str(obj, "version")?,
-        }),
-        "set_style_auto" => Ok(PatchOp::SetStyleAuto),
         "set_brand" => {
             let colors = match obj.get("colors").and_then(|entry| entry.as_arr()) {
                 Some(items) => {
@@ -351,14 +341,6 @@ fn patch_op_to_json(op: &PatchOp) -> Value {
             );
             obj.insert("secs".to_string(), Value::Num(*secs as f64));
         }
-        PatchOp::SetStylePreset { id, version } => {
-            obj.insert("op".to_string(), Value::Str("set_style_preset".to_string()));
-            obj.insert("id".to_string(), Value::Str(id.clone()));
-            obj.insert("version".to_string(), Value::Str(version.clone()));
-        }
-        PatchOp::SetStyleAuto => {
-            obj.insert("op".to_string(), Value::Str("set_style_auto".to_string()));
-        }
         PatchOp::SetBrand { colors, font } => {
             obj.insert("op".to_string(), Value::Str("set_brand".to_string()));
             obj.insert(
@@ -434,7 +416,6 @@ mod tests {
             plan_id: "plan-1".to_string(),
             ops: vec![
                 PatchOp::SetDurationSecs(15.0),
-                PatchOp::SetStyleAuto,
                 PatchOp::SetBrand {
                     colors: vec!["#FFFFFF".to_string()],
                     font: "Lexend".to_string(),

@@ -31,8 +31,6 @@ globalThis.EncodedAudioChunk =
 
 const RESOLUTION = {
   duration_secs: 30,
-  style_id: "kinetic-type",
-  style_version: "1.0.0",
   scenes: [
     {
       duration_secs: 15,
@@ -93,7 +91,16 @@ function buildAdapters({ media, muxEnabled = true, counter }) {
         duration: 1000,
       });
     }
-    return { chunks, keyframes: 1 };
+    return {
+      chunks,
+      keyframes: 1,
+      decoderConfig: {
+        codec: "avc1.640028",
+        codedWidth: 608,
+        codedHeight: 1080,
+        description: new Uint8Array([0, 0, 1]),
+      },
+    };
   };
   return {
     counter,
@@ -138,10 +145,10 @@ test("motion E2E: prompt to mp4 bytes with segment resume and final cache", asyn
   assert.equal(first.result.muxPending, true);
   assert.equal(first.result.segmentStats.segments.length, 2);
   assert.equal(counter.calls, 2);
+  assert.deepEqual(first.result.plan.scenes.length, 1, "single scene by default");
+  assert.equal(first.result.plan.scenes[0].duration_secs, 30);
   assert.deepEqual(first.result.plan.scenes[0].visual, { kind: "stock", query: "neon city" });
-  assert.equal(first.result.plan.scenes[1].visual.kind, "authored");
-  assert.ok(first.result.plan.scenes[1].visual.doc_id.startsWith("doc/"), "authored doc id assigned");
-  assert.equal(first.result.plan.style.id, "kinetic-type");
+  assert.equal(first.result.plan.style, "free");
 
   // Pass 2 with mux, same cache: segments reused, mp4 bytes produced.
   const muxed = buildAdapters({ media, muxEnabled: true, counter });

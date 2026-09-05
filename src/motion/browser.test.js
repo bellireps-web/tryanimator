@@ -75,6 +75,12 @@ function stubEncode(counter) {
     counter.calls += 1;
     return {
       keyframes: 1,
+      decoderConfig: {
+        codec: "avc1.640028",
+        codedWidth: 608,
+        codedHeight: 1080,
+        description: new Uint8Array([0, 0, 1]),
+      },
       chunks: [
         {
           data: new Uint8Array([seg.index]),
@@ -250,7 +256,7 @@ test("createBrowserAdapters wires the full set", () => {
     cache: new MotionCache(new MemoryBackend()),
     loadElement: async () => ({ width: 1, height: 1 }),
   });
-  assert.deepEqual(Object.keys(adapters).sort(), ["ai", "cache", "docs", "images", "mux", "renderer", "validate"]);
+  assert.deepEqual(Object.keys(adapters).sort(), ["ai", "authored", "cache", "docs", "images", "mux", "renderer", "validate"]);
   assert.ok(adapters.docs instanceof Map);
   assert.equal(adapters.validate, null);
 });

@@ -9,6 +9,7 @@
  * Routes:
  *   GET  /health                    -> { ok: true, version }
  *   POST /ai/chat                   -> Meta Model API (muse-spark-*), OpenAI-compatible
+ *   POST /ai/respond                 -> Meta Responses API (reasoning summaries)
  *   GET  /stock/images?q=&per_page= -> stock image search (key injected server-side)
  *   GET  /audio/music?mood=         -> music track pick (Pixabay-compatible)
  *   GET  /audio/sfx?name=           -> sfx pick (Pixabay-compatible)
@@ -23,9 +24,16 @@ const MODEL_ALLOWLIST = /^muse-spark-[\w.+-]+$/;
 const MAX_TOKENS_CAP = 8192;
 const MAX_MESSAGES = 50;
 const MAX_MESSAGE_CHARS = 32768;
+const MAX_PARTS_PER_MESSAGE = 6;
+const MAX_IMAGES_PER_MESSAGE = 4;
+const MAX_IMAGE_CHARS = 2000000;
 const STOCK_PAGE_CAP = 25;
 const UPSTREAM_TIMEOUT_MS = 120_000;
 const SEARCH_TIMEOUT_MS = 15_000;
+const RESPOND_INPUT_CAP = 32768;
+const RESPOND_INSTRUCTIONS_CAP = 4000;
+const RESPOND_OUTPUT_CAP = 2048;
+const REASONING_SUMMARIES = ["auto", "concise", "detailed"];
 
 /** Best-effort sliding window per isolate. Documented limit: use Cloudflare
  *  Rate Limiting rules in front of this worker for production hardening. */
@@ -122,16 +130,50 @@ async function mapUpstream(response) {
   return apiError("provider_transport", `provider error ${response.status}`, 502);
 }
 
+function sanitizeContent(content) {
+  // Plain text turn (existing contract).
+  if (typeof content === "string") {
+    if (!content.length || content.length > MAX_MESSAGE_CHARS) return null;
+    return content;
+  }
+  // Multimodal turn: [{type:"text",text},{type:"image_url",image_url:{url}}].
+  if (!Array.isArray(content) || !content.length || content.length > MAX_PARTS_PER_MESSAGE) {
+    return null;
+  }
+  const clean = [];
+  let images = 0;
+  for (const part of content) {
+    if (!part || typeof part.type !== "string") return null;
+    if (part.type === "text") {
+      if (typeof part.text !== "string" || !part.text.length || part.text.length > MAX_MESSAGE_CHARS) {
+        return null;
+      }
+      clean.push({ type: "text", text: part.text });
+    } else if (part.type === "image_url") {
+      const url = part.image_url && part.image_url.url;
+      if (typeof url !== "string" || url.length > MAX_IMAGE_CHARS) return null;
+      if (!url.startsWith("data:image/") && !url.startsWith("https://")) return null;
+      images += 1;
+      if (images > MAX_IMAGES_PER_MESSAGE) return null;
+      clean.push({ type: "image_url", image_url: { url } });
+    } else {
+      return null;
+    }
+  }
+  return clean;
+}
+
 function sanitizeMessages(messages) {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) {
     return null;
   }
   const clean = [];
   for (const item of messages) {
-    if (!item || typeof item.role !== "string" || typeof item.content !== "string") return null;
+    if (!item || typeof item.role !== "string") return null;
     if (!["system", "user", "assistant", "tool"].includes(item.role)) return null;
-    if (item.content.length > MAX_MESSAGE_CHARS) return null;
-    clean.push({ role: item.role, content: item.content });
+    const content = sanitizeContent(item.content);
+    if (content === null) return null;
+    clean.push({ role: item.role, content });
   }
   return clean;
 }
@@ -145,7 +187,7 @@ async function handleChat(req, env) {
   } catch {
     return apiError("bad_request", "invalid JSON body", 400);
   }
-  const { model, messages, max_tokens, temperature, stream } = body ?? {};
+  const { model, messages, max_tokens, temperature, stream, reasoning_effort } = body ?? {};
   if (typeof model !== "string" || !MODEL_ALLOWLIST.test(model)) {
     return apiError("bad_request", "model must be a muse-spark-* id", 400);
   }
@@ -167,11 +209,99 @@ async function handleChat(req, env) {
     }
     payload.temperature = temperature;
   }
+  // "none" disables reasoning and is rejected by Muse Spark: not accepted here.
+  if (reasoning_effort !== undefined) {
+    if (!["minimal", "low", "medium", "high", "xhigh"].includes(reasoning_effort)) {
+      return apiError("bad_request", "reasoning_effort must be minimal|low|medium|high|xhigh", 400);
+    }
+    payload.reasoning_effort = reasoning_effort;
+  }
   if (stream === true) payload.stream = true;
 
   let upstream;
   try {
     upstream = await fetch(`${META_BASE}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${env.META_API_KEY}`,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const timedOut = error && error.name === "AbortError";
+    return apiError(
+      "provider_transport",
+      timedOut ? "upstream timeout" : "upstream unreachable",
+      timedOut ? 504 : 502,
+    );
+  }
+  return mapUpstream(upstream);
+}
+
+function sanitizeRespondReasoning(value) {
+  if (value === undefined) return {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const out = {};
+  if (value.effort !== undefined) {
+    if (!["minimal", "low", "medium", "high", "xhigh"].includes(value.effort)) return null;
+    out.effort = value.effort;
+  }
+  if (value.summary !== undefined) {
+    if (!REASONING_SUMMARIES.includes(value.summary)) return null;
+    out.summary = value.summary;
+  }
+  return out;
+}
+
+async function handleRespond(req, env) {
+  const missing = requireSecret(env, "META_API_KEY");
+  if (missing) return missing;
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return apiError("bad_request", "invalid JSON body", 400);
+  }
+  const { model, input, instructions, reasoning, max_output_tokens, temperature } = body ?? {};
+  if (typeof model !== "string" || !MODEL_ALLOWLIST.test(model)) {
+    return apiError("bad_request", "model must be a muse-spark-* id", 400);
+  }
+  if (typeof input !== "string" || !input.length || input.length > RESPOND_INPUT_CAP) {
+    return apiError("bad_request", "input must be a non-empty string", 400);
+  }
+  if (
+    instructions !== undefined &&
+    (typeof instructions !== "string" || !instructions.length || instructions.length > RESPOND_INSTRUCTIONS_CAP)
+  ) {
+    return apiError("bad_request", "instructions must be a short string", 400);
+  }
+  const reasoningOut = sanitizeRespondReasoning(reasoning);
+  if (reasoningOut === null) {
+    return apiError("bad_request", "reasoning must be {effort?, summary?}", 400);
+  }
+  const payload = {
+    model,
+    input,
+    store: false,
+    max_output_tokens:
+      Number.isFinite(max_output_tokens) && max_output_tokens > 0
+        ? Math.min(Math.floor(max_output_tokens), MAX_TOKENS_CAP)
+        : RESPOND_OUTPUT_CAP,
+  };
+  if (instructions) payload.instructions = instructions;
+  if (reasoningOut.effort || reasoningOut.summary) payload.reasoning = reasoningOut;
+  if (temperature !== undefined) {
+    if (typeof temperature !== "number" || temperature < 0 || temperature > 2) {
+      return apiError("bad_request", "temperature must be within 0..2", 400);
+    }
+    payload.temperature = temperature;
+  }
+
+  let upstream;
+  try {
+    upstream = await fetch(`${META_BASE}/responses`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -308,6 +438,9 @@ export default {
 
     if (req.method === "POST" && url.pathname === "/ai/chat") {
       return withCors(await handleChat(req, env));
+    }
+    if (req.method === "POST" && url.pathname === "/ai/respond") {
+      return withCors(await handleRespond(req, env));
     }
     if (req.method === "GET" && url.pathname === "/stock/images") {
       return withCors(await handleStockImages(req, env, url));

@@ -15,7 +15,7 @@ export function proxyError(status, body) {
   return error;
 }
 
-async function getJson(url, fetchImpl = fetch) {
+async function getJson(url, fetchImpl = (...args) => fetch(...args)) {
   const response = await fetchImpl(url);
   let body = null;
   try {
@@ -28,7 +28,7 @@ async function getJson(url, fetchImpl = fetch) {
 }
 
 /** Search music tracks by mood. Returns [{id, url, license}]. */
-export async function fetchTracks(proxyBase, appToken, mood, fetchImpl = fetch) {
+export async function fetchTracks(proxyBase, appToken, mood, fetchImpl = (...args) => fetch(...args)) {
   if (!mood || !mood.trim()) throw codedError("bad_request", "mood is required");
   const body = await getJson(
     `${proxyBase}/audio/music?mood=${encodeURIComponent(mood.trim())}`,
@@ -38,7 +38,7 @@ export async function fetchTracks(proxyBase, appToken, mood, fetchImpl = fetch) 
 }
 
 /** Search SFX by name. Returns [{id, url, license}]. */
-export async function fetchSfx(proxyBase, appToken, name, fetchImpl = fetch) {
+export async function fetchSfx(proxyBase, appToken, name, fetchImpl = (...args) => fetch(...args)) {
   if (!name || !name.trim()) throw codedError("bad_request", "name is required");
   const body = await getJson(
     `${proxyBase}/audio/sfx?name=${encodeURIComponent(name.trim())}`,

@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { timeAtFrame, frameCount, segments } from "../src/clock.js";
-import { resolvePreset, presetIds } from "../src/presets.js";
 import {
   sceneAt,
   planTotalSecs,
@@ -18,7 +17,7 @@ function samplePlan(overrides = {}) {
     height: 1080,
     fps: 30,
     duration: 30,
-    style: { id: "kinetic-type", version: "1.0.0" },
+    style: "free",
     brand: { colors: ["#7069AA", "#1F1B46"], font: "Figtree" },
     audio: { music_track_id: "m1", sfx: [{ id: "s1", at_secs: 5 }] },
     scenes: [
@@ -62,20 +61,26 @@ test("sceneAt: boundaries and range errors", () => {
   assert.equal(codeOf(() => sceneAt(plan, 30)), 'time_out_of_range');
 });
 
-test("resolveFrame: kinetic ops and brand cycling", () => {
+test("resolveFrame: free canvas is background plus visual only", () => {
   const plan = samplePlan();
   const { ops } = resolveFrame(plan, 5, DIMS);
   assert.deepEqual(ops[0], { op: "background", color: "#7069AA" });
   assert.equal(ops[1].op, "image");
   assert.equal(ops[1].ref, "stock:neon");
   assert.ok(ops[1].zoom > 1 && ops[1].zoom <= 1.08);
-  const text = ops.find((op) => op.op === "text");
-  assert.equal(text.str, "Hello");
-  assert.equal(text.x, DIMS.w / 2);
+  assert.equal(ops.length, 2, "no preset overlays on a free canvas");
 
   const second = resolveFrame(plan, 15, DIMS).ops;
   assert.equal(second[0].color, "#1F1B46");
   assert.equal(second[1].ref, "a1");
+});
+
+test("resolveFrame: style field is ignored (free canvas)", () => {
+  const plan = samplePlan();
+  for (const style of ["free", "auto", { id: "anything" }, null]) {
+    const { ops } = resolveFrame(samplePlan({ style }), 5, DIMS);
+    assert.equal(ops[0].op, "background");
+  }
 });
 
 test("resolveFrame: fade blend group near boundary", () => {
@@ -103,40 +108,11 @@ test("resolveFrame: slide blend and cut passthrough", () => {
   assert.equal(codeOf(() => resolveFrame(plan, 9.9, DIMS)), 'unknown_transition');
 });
 
-test("resolveFrame: style contract errors", () => {
-  const auto = samplePlan({ style: "auto" });
-  assert.equal(codeOf(() => resolveFrame(auto, 1, DIMS)), 'style_unresolved');
-
-  const pinned = samplePlan({ style: { id: "kinetic-type", version: "9.9.9" } });
-  assert.equal(codeOf(() => resolveFrame(pinned, 1, DIMS)), 'version_mismatch');
-
-  const unknown = samplePlan({ style: { id: "nope", version: "1.0.0" } });
-  assert.equal(codeOf(() => resolveFrame(unknown, 1, DIMS)), 'unknown_preset');
-  assert.equal(codeOf(() => resolvePreset("nope")), 'unknown_preset');
-  assert.deepEqual(presetIds(), ["kinetic-type", "count-up", "lower-third", "logo-sting"]);
-});
-
-test("resolveFrame: count-up is deterministic", () => {
-  const plan = samplePlan({ style: { id: "count-up", version: "1.0.0" } });
+test("resolveFrame: free canvas is deterministic", () => {
+  const plan = samplePlan();
   const first = resolveFrame(plan, 2, DIMS).ops;
   const again = resolveFrame(plan, 2, DIMS).ops;
   assert.deepEqual(first, again);
-  const mid = resolveFrame(plan, 5, DIMS).ops.find(
-    (op) => op.op === "text" && op.y === DIMS.h * 0.42,
-  );
-  assert.equal(mid.str, "50");
-});
-
-test("resolveFrame: logo-sting letter and lower-third band", () => {
-  const sting = samplePlan({ style: { id: "logo-sting", version: "1.0.0" } });
-  const letter = resolveFrame(sting, 5, DIMS).ops.find(
-    (op) => op.op === "text" && op.size === Math.round(DIMS.w * 0.3),
-  );
-  assert.equal(letter.str, "H");
-
-  const third = samplePlan({ style: { id: "lower-third", version: "1.0.0" } });
-  const band = resolveFrame(third, 5, DIMS).ops.find((op) => op.op === "rect");
-  assert.equal(band.h, DIMS.h * 0.22);
 });
 
 test("resolveFrame: unknown visual kind throws", () => {

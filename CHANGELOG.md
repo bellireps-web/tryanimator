@@ -1,5 +1,146 @@
 # Reglas de cambios del proyecto
 
+## Persistencia por fusión: turnos que no se pisan — 2026-09-04
+
+- Causa de los turnos duplicados/perdidos: dos turnos sobre la misma comp (dos mounts, recarga en medio) escribían el registro entero y el último ganaba. Ahora `mergeChatTurn` une historiales por (kind, texto) y `persistCompTurn` re-lee, fusiona y sube versión monotónica (`max(actual+1, propuesta)`); el turno de usuario al enviar también fusiona.
+- Tests: 97 front + 14 worker en verde.
+
+## Selectores colgados e init diferido — 2026-09-04
+
+- Causa del vídeo solo-fondo: el doc animaba `#stage`, `#bgShift`, `#glowA`… inexistentes en su HTML (visto en consola: `GSAP target not found`), dejando todo oculto. Nuevo `findDanglingSelectors` (solo literales simples, sin falsos positivos) integrado al gate con la lista de culpables en el brief de reintento.
+- El gate informa en el job (`job.gateReports`) y la traza muestra `gate: reintento escena 0 [motivos]` — probado en vivo con el diagnóstico exacto del doc real.
+- Docs con init dentro de `window load` / `DOMContentLoaded` renderizaban muertos (esos eventos ya dispararon antes de correr los scripts): ahora se re-disparan si no se capturó nada, y `runAuthoredScripts` es async. `loadDoc` además clavea por HTML (antes devolvía el doc anterior al puntuar el reintento).
+- Tests: 95 front + 14 worker en verde. Pendiente: prueba visual de un turno con estos fixes (el último v2 medido es anterior a ellos).
+
+## Cache hit rate, duración fija, thinking en v1, turns que sobreviven — 2026-09-04
+
+- **Hit rate**: `cached_tokens` acumulado en `noteUsage`/`noteResponsesUsage` y pintado en la traza (`· 62% caché`). Test.
+- **Duración fija**: `set_duration_secs` solo se emite si lo pides (`wantsDurationChange` + filtro `filterUnaskedDurationOps` en el Studio + orden en ambos prompts). Test.
+- **Limpieza**: fuera `MotionLoading`/`MOTION_PHASE`; `LoadingView` queda solo con el mock del modo editor.
+- **Turnos que sobrevivían a medias**: el turno de usuario se persiste al enviar (un desmontaje a mitad de patch ya no lo borra). Causa raíz hallada por el camino: la copia `setMJob({...pending})` se publicaba antes de `onJobDone`, así que nunca llevaba `compId` y todos los persists de patch se saltaban en silencio en comps recién generadas; ahora se publica antes (preview inmediato) y después de guardar (con `compId`).
+- **Thinking en v1**: `resolveAuto`/`authorScene` van por Responses API con fallback a chat cuando hay imágenes (sin lane multimodal allí); el thinking del resolve viaja en `result.thinking` al mensaje v1. `respond` acepta `temperature` (también en el worker).
+- Tests: 92 front + 14 worker en verde. E2E: v1 con thinking en vivo; hit rate pendiente de ver con caché caliente.
+
+## Entradas verificadas mecánicamente — 2026-09-04
+
+- El prompt solo no bastaba (el modelo mostró el layout completo en t=0 aun con la regla). Ahora el gate verifica: `hasStaggeredEntrances` (tweens `.from`/ocultos iniciales), `spreadScore` (cambio mínimo en cada ventana de la primera mitad + build t=0→mitad ≥ 0.03, calibrado contra un vídeo lento real que midió 0.006) y `motionScore`. Un solo reintento compartido reconstruye desde cero.
+- Fix hallado por el camino: los docs que inician en un listener `window load` renderizaban muertos porque el shim lo ignoraba; ahora se dispara (el DOM ya está parseado) y `runAuthoredScripts` es async con settle de microtareas.
+- Prompt: anclas numéricas (título en el segundo 1, todo visible al 40%).
+- E2E en el chart: t=0 negro → t=4 gráfica casi completa.
+- Tests: 85 front + 14 worker en verde.
+
+## Prompt: animar todo + entrada por pasos — 2026-09-04
+
+- El system prompt de authoring exige animar TODOS los elementos desde el primer frame (textos, objetos, formas, barras, puntos, badges y fondo, cada uno con su tween) y construcción paso a paso por partes separadas (primero el título solo, luego el resto escalonado, nunca todo a la vez).
+- Tests: 78 front en verde. Aplica a vídeos nuevos (los docs ya generados no cambian).
+
+## Hilo arriba, composer limpio — 2026-09-04
+
+- El historial sale de la caja del chat a la zona superior (`.st-thread` con scroll y auto-scroll al final): burbujas de usuario a la derecha estilo WhatsApp y mensajes del agente (pensamiento, actividad, traza) a la izquierda. La caja de abajo queda solo con el textarea y los botones.
+- E2E: hilo encima de la caja, 0 mensajes dentro de ella, burbuja de usuario `flex-end`.
+
+## Actividad por turno en un solo mensaje — 2026-09-04
+
+- Cada mensaje del agente agrupa todo su trabajo: Pensamiento + palabras + acordeón "Actividad · N pasos" (fase, % y segundos por paso) + ops JSON + mini-traza. `recordTurnStep` recoge los snapshots (transiciones + progreso grueso) tanto en la v1 como en los patch; steps/ops persisten en las comps y se restauran al reabrir.
+- Tests: 78 front + 14 worker en verde. E2E: mensaje v2 con 6 pasos, ops `update_scene` y traza.
+
+## El thinking usa el historial — 2026-09-04
+
+- Cada patch envía el historial del hilo (`threadHistoryForAgent`: últimos 6 turnos user/assistant, 3000 chars, sin duplicar el mensaje actual) como contexto en la petición Responses. El thinking ya razona sobre lo anterior ("Interpreting underwater scene request…").
+- Tests: 76 front + 14 worker en verde. E2E: patch con `conversation so far` en el request y v2 completada.
+
+## Candado + página Coming soon — 2026-09-04
+
+- Candado en el sidebar para Resources, Community y Affiliates; al seleccionarlos se muestra página centrada con candado, título y "Coming soon" en vez del composer.
+- Fix navegación: Templates/Resources/Community/Affiliates/Settings apagan la vista Projects al pulsarlos (antes desde Projects no hacían nada visible).
+
+## Coming soon en Resources, Community y Affiliates — 2026-09-04
+
+- Etiqueta "Coming soon" junto a los tres items del sidebar (pill sutil alineada a la derecha).
+
+## Sin pantalla de carga: el Studio genera in-situ — 2026-09-04
+
+- Fuera la ruta `loading` para Motion: al enviar vas directo al Studio, que ejecuta el job y pinta el degradado morado (`.ld-dream` reutilizado) en el preview con fase + `%` debajo. Al terminar aparece el MP4, se anuncia v1 y se autoguardada la comp.
+- Fallo visible en el propio preview (error + Volver) en vez de pantalla aparte; salir a mitad cancela la UI sin romper nada.
+- Detalle: el job muta in-place, así que al completar se publica una copia (`setMJob({...})`) para que los signals reaccionen.
+- E2E: envío → estudio inmediato con `0% En cola` → vídeo 1.36MB + comp guardada.
+- Tests: 68 front + 14 worker en verde.
+
+## Portadas en alta calidad — 2026-09-04
+
+- Thumbnails de 192px a 480px de ancho, JPEG 0.7→0.88 y captura en la mitad del video (antes en el segundo 0.4, a menudo en fundidos). E2E: 4/4 thumbs a 480px.
+- (Nota: las tarjetas son apaisadas y los videos 9:16, así que el encuadre recorta laterales por diseño.)
+
+## Projects centra al ocultar el sidebar — 2026-09-04
+
+- `.projects-main` tenía `left:261px` fijo sin regla para el estado colapsado; añadida `.editor-page.editor-sidebar-hidden .projects-main{left:19px;width:calc(100% - 19px)}`, igual que el Home. E2E: ocultar → 19px/ancho completo; mostrar → 261px.
+
+## Salir del Studio lleva a Projects — 2026-09-04
+
+- El botón de atrás del Studio (`onNewVideo`) abre el editor en la pestaña Projects en vez del formulario "Nuevo video" (`EditorView` acepta `startOnProjects`; el resto de entradas siguen yendo al composer).
+- E2E: abrir comp → salir → rejilla de Projects visible, sin formulario intermedio.
+
+## Full-bleed + transporte propio — 2026-09-04
+
+- Full-bleed obligatorio: el prompt de authoring exige contenido a sangre (sin wrappers estrechos ni márgenes vacíos); el stage inyecta `guardCss` (html/body al tamaño exacto del frame, fondo = color de la escena) y `findFrameBackground` lo propaga al raster. Verificado: 608×1080 exacto, contenido hasta los bordes.
+- Transporte propio: fuera el atributo `controls` del preview (controles nativos eliminados); la barra inferior lleva play, seek, tiempo, mute y fullscreen. Preview con `object-fit: contain` (muestra el fichero real, sin recortes).
+- Fullscreen con barra: preview + transporte envueltos en `.st-stage`; el fullscreen se pide sobre el contenedor, así dentro salen video, play, barrita, volumen y salir (el botón alterna a Minimize con `isFull`). CSS `:fullscreen` estira el escenario a 100% con la barra abajo.
+- Tests: 68 front + 14 worker en verde. E2E: 5s v1 con mute/fullscreen presentes, `hasControlsAttr: false` y `fullscreenElement` = `.st-stage` con todo dentro.
+
+## Hilo estilo assistant-ui: thinking + palabras — 2026-09-04
+
+- Nueva ruta `POST /ai/respond` (Responses API, `store:false`): devuelve texto + summary del razonamiento. El thinking crudo no existe como texto en ningún endpoint (verificado contra la API).
+- `chatPatch` usa Responses (`{"ops":[],"message"}`) con fallback a chat completions; el hilo muestra acordeón "Pensamiento" plegable + palabras del modelo + mini-traza (versión·ops·tokens). La burbuja v1 queda corta, sin parte de tokens.
+- assistant-ui es React y no monta en Solid: patrones replicados en componentes propios (Thinking/Trace). Thinking y traza persisten en comps.
+- Tests: 67 front + 14 worker + 23 Rust en verde. E2E: thinking + "Voy a intensificar…" visibles en el hilo.
+
+## Projects: comps guardadas y reabribles — 2026-09-04
+
+- Nuevo `src/motion/projects.js`: cada motion terminado se autoguardada en IndexedDB (`motion-projects`, separado de la caché) con prompt, plan, MP4, usage, chat y versión; los patch actualizan el mismo registro (v1→vN).
+- `ProjectsView` real: rejilla con thumbnail (frame.lazy), meta (duración·ratio·versión), abrir y eliminar. Reabrir restaura video byte-exacto + historial sin duplicar el mensaje v1.
+- Límites honestos: el HTML authored vive solo en memoria (al reabrir, un patch re-authorea desde el brief); solo comps Motion (el modo Editor aún no produce video).
+- Tests: 64 front + 13 worker + 23 Rust en verde. E2E: crear → Projects → reload → abrir → patch → v4 en lista.
+
+## El chat edita, no recrea — 2026-09-04
+
+- `applyRevisionToChangedScenes` adjunta el HTML previo (`previousDoc`); el re-author recibe el documento actual + orden de cambio mínimo + temperatura 0.2: misma composición, solo cambia lo pedido.
+- Verificado: "cambia el sol por una luna grande" → mismo castillo/layout en nocturno (v1→v2, bytes distintos).
+- Tests: 61 front + 13 worker + 23 Rust en verde.
+
+## Traza en el chat + reasoning_effort — 2026-09-04
+
+- La API no expone texto de razonamiento (solo `reasoning_tokens`): el chat muestra traza real en su lugar — composición vN, fases en vivo, ops aplicadas, escenas re-hechas y tokens ("pensó 11.2k tokens (1.8k razonando)").
+- `reasoning_effort: low` por defecto en llamadas Motion (worker lo valida/reenvía): razonamiento 3273→~600 tokens, 3× más barato y adiós a respuestas vacías por tope de 8192.
+- Retry único ante contenido vacío movido a `chat()` (cubre resolve/author/patch); timeout cliente 150s; chip de fase se limpia al fallar.
+- Tests: 60 front + 13 worker + 23 Rust en verde.
+
+## Chat del Studio funcional — 2026-09-04
+
+- Los cambios del chat se aplican de verdad: `applyRevisionToChangedScenes` invalida los docs authored tocados (o todos si el modelo no codificó nada visual) y la revisión del usuario viaja a `authorScene` (`user revision (must be visible...)`); `update_scene` acepta `brief`; la revisión nunca contamina claves de caché.
+- Feedback de fase en el chat (Consultando → Re-dibujando → Renderizando %) vía `motionSnap`; mensaje confirma `re-author N`.
+- Robustez: timeout cliente 150s en `chat()`; reintento único en `authorScene` ante respuestas vacías (`finish:length`); fallback a authored cuando el modelo pide fondo `stock` sin proveedor.
+- Verificado en vivo: "cambia la tormenta por un atardecer" → FARO ROJO EN CALMA, bytes distintos.
+- Tests: 56 front + 12 worker + 23 Rust en verde.
+
+## Una escena + movimiento continuo — 2026-09-04
+
+- Una escena por defecto: el resolve pide exactamente 1 (`wantsMultipleScenes` detecta "dos escenas", "3-part", "capítulos"…); si el modelo devuelve varias se fusionan (`mergeScenesToOne`: duraciones suman, briefs se unen). El chat (`add_scene`) sigue pudiendo abrir más.
+- La animación llena el tiempo: seek por segundos exactos cuando la timeline coincide (±25%), si no estirado por fracción (nunca congelado); prompt exige movimiento visible de principio a fin; `motionScore` mide píxeles y reintenta el authoring una vez si el doc sale estático.
+- Tests: 52 front + 12 worker + 23 Rust en verde.
+
+## Referencia muda: imágenes sin instrucciones — 2026-09-03
+
+- Las referencias (imágenes, poster de video) viajan como partes multimodales sin texto que ordene seguir estilo/colores/layout; se eliminó la línea `reference:` y `reference palette:` del prompt. El modelo ve la imagen, el prompt del usuario manda.
+- Submit más rápido: fuera el cálculo de paletas (downscale JPEG 1024px + poster de video se mantienen).
+- Verificado en vivo: mismo chart ARR adjunto + prompt de tabla periódica neón → tabla periódica neón, 0 rastro ARR.
+
+## Lienzo libre: presets eliminados — 2026-09-03
+
+- Fuera el catálogo (`web-render/src/presets.js` eliminado): `resolve.js` ya no valida estilos ni pinta overlays — cada frame es fondo de marca + visual (imagen/stock o doc authored ejecutado). Desaparecen `unknown_preset`, `version_mismatch` y `style_unresolved`.
+- El resolve del agente devuelve solo duración + escenas (`plan.style` pasa a `"free"`); `authorScene` compone documentos libres con directrices de ratio; fuera las patch ops `set_style_preset`/`set_style_auto` (quedan 7).
+- Rust alineado (`StyleSel::Free`, sin ops de estilo; `cargo test`: 23/23 ✅). UI muestra "lienzo libre" en chips.
+- Nota: sin preset base, una escena sin doc válido pinta solo fondo — el fallo sigue siendo visible, nunca en blanco silencioso.
+
 ## Motion Slice 7: E2E prompt→MP4 — 2026-09-03
 
 - Nuevo `src/motion/e2e.test.js`: pipeline completo con módulos reales (state machine, MotionCache, segment renderer, mux, image loader, validación auto) y stubs solo en el borde navegador (AI, stock HTTP, encoder, mediabunny).

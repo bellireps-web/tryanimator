@@ -92,18 +92,93 @@ pub fn decode_plan_output(body: &str) -> Result<MotionPlan, ProviderError> {
     })
 }
 
-/// What the model must return for Auto resolution: duration + style preset.
+/// What the model must return for Auto resolution: duration + scenes.
+/// Free canvas: no style preset is chosen; every scene is authored directly.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AutoResolution {
     pub duration_secs: f32,
-    pub style_id: String,
-    pub style_version: String,
+    pub scenes: Vec<ResolvedScene>,
+}
+
+/// One scene brief inside an Auto resolution.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolvedScene {
+    pub duration_secs: f32,
+    pub brief: String,
+    pub text: String,
+    pub transition: String,
+}
+
+/// Validate an Auto resolution the same way plans are validated: every rule
+/// violation is reported, never defaulted.
+pub fn validate_auto_resolution(resolution: &AutoResolution) -> Result<(), Vec<PlanError>> {
+    use crate::plan::{MAX_DURATION_SECS, MIN_DURATION_SECS};
+    let mut errors: Vec<PlanError> = Vec::new();
+    if !resolution.duration_secs.is_finite()
+        || resolution.duration_secs < MIN_DURATION_SECS
+        || resolution.duration_secs > MAX_DURATION_SECS
+    {
+        errors.push(PlanError {
+            field: "duration_secs".to_string(),
+            code: "out_of_range".to_string(),
+            message: "resolved duration must be within 1..=60s".to_string(),
+        });
+    }
+    if resolution.scenes.is_empty() {
+        errors.push(PlanError {
+            field: "scenes".to_string(),
+            code: "empty".to_string(),
+            message: "at least one scene brief is required".to_string(),
+        });
+    }
+    let mut sum = 0.0f32;
+    for (index, scene) in resolution.scenes.iter().enumerate() {
+        let base = format!("scenes[{index}]");
+        if !scene.duration_secs.is_finite() || scene.duration_secs <= 0.0 {
+            errors.push(PlanError {
+                field: format!("{base}.duration_secs"),
+                code: "non_positive".to_string(),
+                message: "scene duration must be positive".to_string(),
+            });
+        } else {
+            sum += scene.duration_secs;
+        }
+        if scene.brief.trim().is_empty() {
+            errors.push(PlanError {
+                field: format!("{base}.brief"),
+                code: "empty".to_string(),
+                message: "scene brief must not be empty".to_string(),
+            });
+        }
+        if scene.transition.trim().is_empty() {
+            errors.push(PlanError {
+                field: format!("{base}.transition"),
+                code: "empty".to_string(),
+                message: "scene transition must not be empty".to_string(),
+            });
+        }
+    }
+    if sum.is_finite()
+        && resolution.duration_secs.is_finite()
+        && (sum - resolution.duration_secs).abs() > crate::plan::DURATION_EPSILON_SECS
+    {
+        errors.push(PlanError {
+            field: "scenes".to_string(),
+            code: "scene_sum_mismatch".to_string(),
+            message: "scene briefs must sum to the resolved duration".to_string(),
+        });
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 /// Muse Spark through the worker proxy (OpenAI-compatible chat endpoint).
 /// Implementations perform I/O; this trait only fixes the contract.
 pub trait AiProvider {
-    /// Propose duration (1..=60s) and HyperFrames preset for Auto fields.
+    /// Propose duration (1..=60s) and scene briefs for Auto fields.
     fn resolve_auto(&self, prompt: &str, ratio: &str) -> Result<AutoResolution, ProviderError>;
     /// Author one HyperFrames scene document; returns the stored doc id.
     fn author_scene(&self, prompt: &str, scene_brief: &str) -> Result<String, ProviderError>;
@@ -158,6 +233,40 @@ mod tests {
                 assert!(!errors.is_empty());
             }
             _ => panic!("wrong variant"),
+        }
+    }
+
+    fn sample_resolution() -> AutoResolution {
+        AutoResolution {
+            duration_secs: 30.0,
+            scenes: vec![
+                ResolvedScene {
+                    duration_secs: 10.0,
+                    brief: "opening".to_string(),
+                    text: "Hello".to_string(),
+                    transition: "fade".to_string(),
+                },
+                ResolvedScene {
+                    duration_secs: 20.0,
+                    brief: "main".to_string(),
+                    text: "World".to_string(),
+                    transition: "cut".to_string(),
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn auto_resolution_rules() {
+        assert!(validate_auto_resolution(&sample_resolution()).is_ok());
+        let mut bad = sample_resolution();
+        bad.duration_secs = 61.0;
+        bad.scenes[0].duration_secs = 0.0;
+        bad.scenes[1].brief.clear();
+        let errors = validate_auto_resolution(&bad).expect_err("must fail");
+        let codes: Vec<&str> = errors.iter().map(|error| error.code.as_str()).collect();
+        for expected in ["out_of_range", "empty", "non_positive", "scene_sum_mismatch"] {
+            assert!(codes.contains(&expected), "missing {expected} in {codes:?}");
         }
     }
 

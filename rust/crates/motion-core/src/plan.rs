@@ -67,7 +67,8 @@ pub enum DurationSel {
 #[derive(Debug, Clone, PartialEq)]
 pub enum StyleSel {
     Auto,
-    Preset { id: String, version: String },
+    /// Free canvas: no preset styles. Every scene is authored directly.
+    Free,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -125,13 +126,13 @@ pub struct MotionPlan {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlanError {
     /// Dotted field path, e.g. `scenes[2].duration_secs`.
-    pub field: String,
-    pub code: String,
-    pub message: String,
+    pub(crate) field: String,
+    pub(crate) code: String,
+    pub(crate) message: String,
 }
 
 impl PlanError {
-    fn new(field: &str, code: &str, message: &str) -> PlanError {
+    pub(crate) fn new(field: &str, code: &str, message: &str) -> PlanError {
         PlanError {
             field: field.to_string(),
             code: code.to_string(),
@@ -283,23 +284,8 @@ impl MotionPlan {
         }
 
         match &self.style {
-            StyleSel::Auto => {}
-            StyleSel::Preset { id, version } => {
-                if id.trim().is_empty() {
-                    errors.push(PlanError::new(
-                        "style.id",
-                        "empty",
-                        "preset id must not be empty",
-                    ));
-                }
-                if version.trim().is_empty() {
-                    errors.push(PlanError::new(
-                        "style.version",
-                        "empty",
-                        "preset version must be pinned",
-                    ));
-                }
-            }
+            // Free canvas: nothing to validate. Auto and Free both pass.
+            StyleSel::Auto | StyleSel::Free => {}
         }
 
         if self.brand.colors.is_empty() {
@@ -371,12 +357,7 @@ impl MotionPlan {
             "style".to_string(),
             match &self.style {
                 StyleSel::Auto => Value::Str("auto".to_string()),
-                StyleSel::Preset { id, version } => {
-                    let mut preset = BTreeMap::new();
-                    preset.insert("id".to_string(), Value::Str(id.clone()));
-                    preset.insert("version".to_string(), Value::Str(version.clone()));
-                    Value::Obj(preset)
-                }
+                StyleSel::Free => Value::Str("free".to_string()),
             },
         );
         let mut brand = BTreeMap::new();
@@ -548,22 +529,12 @@ impl MotionPlan {
         });
         let style = lookup(obj, &mut errors, "style").and_then(|entry| match entry {
             Value::Str(text) if text == "auto" => Some(StyleSel::Auto),
-            Value::Obj(preset) => {
-                let id = preset.get("id").and_then(|id| id.as_str()).unwrap_or("");
-                let version = preset
-                    .get("version")
-                    .and_then(|version| version.as_str())
-                    .unwrap_or("");
-                Some(StyleSel::Preset {
-                    id: id.to_string(),
-                    version: version.to_string(),
-                })
-            }
+            Value::Str(text) if text == "free" => Some(StyleSel::Free),
             _ => {
                 errors.push(PlanError::new(
                     "style",
                     "type",
-                    "expected \"auto\" or a preset",
+                    "expected \"auto\" or \"free\" (presets were removed)",
                 ));
                 None
             }
@@ -812,10 +783,7 @@ pub(crate) mod tests {
             height: 1080,
             fps: 30,
             duration: DurationSel::Secs(30.0),
-            style: StyleSel::Preset {
-                id: "kinetic-type".to_string(),
-                version: "1.2.0".to_string(),
-            },
+            style: StyleSel::Free,
             brand: Brand {
                 colors: vec!["#7069AA".to_string(), "#1F1B46".to_string()],
                 font: "Figtree".to_string(),
@@ -880,10 +848,6 @@ pub(crate) mod tests {
         plan.fps = 60;
         plan.duration = DurationSel::Secs(61.0);
         plan.scenes.clear();
-        plan.style = StyleSel::Preset {
-            id: "".to_string(),
-            version: "".to_string(),
-        };
         plan.brand.colors = vec!["red".to_string()];
         plan.brand.font = "Evil<script>".to_string();
         plan.audio.sfx.push(SfxCue {

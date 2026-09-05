@@ -94,6 +94,175 @@ test("chat forwards with injected key and strips client auth", async () => {
   }
 });
 
+test("chat forwards multimodal image parts", async () => {
+  stubFetch(
+    () =>
+      new Response(JSON.stringify({ choices: [] }), {
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  try {
+    const res = await handler.fetch(
+      authed("/ai/chat", {
+        method: "POST",
+        body: {
+          model: "muse-spark-1.3",
+          messages: [
+            { role: "system", content: "resolve" },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "follow this style" },
+                { type: "image_url", image_url: { url: "data:image/jpeg;base64,AAA" } },
+              ],
+            },
+          ],
+        },
+      }),
+      ENV,
+    );
+    assert.equal(res.status, 200);
+    const sent = JSON.parse(lastFetch.init.body);
+    assert.equal(sent.messages[1].content[1].image_url.url, "data:image/jpeg;base64,AAA");
+  } finally {
+    delete globalThis.fetch;
+  }
+});
+
+test("chat rejects bad multimodal parts", async () => {
+  stubFetch(() => new Response("{}", { headers: { "content-type": "application/json" } }));
+  try {
+    const tooMany = await handler.fetch(
+      authed("/ai/chat", {
+        method: "POST",
+        body: {
+          model: "muse-spark-1.3",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "hi" },
+                ...[1, 2, 3, 4, 5].map((n) => ({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${n}` } })),
+              ],
+            },
+          ],
+        },
+      }),
+      ENV,
+    );
+    assert.equal(tooMany.status, 400);
+
+    const badScheme = await handler.fetch(
+      authed("/ai/chat", {
+        method: "POST",
+        body: {
+          model: "muse-spark-1.3",
+          messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: "blob:http://local/1" } }] }],
+        },
+      }),
+      ENV,
+    );
+    assert.equal(badScheme.status, 400);
+
+    const badType = await handler.fetch(
+      authed("/ai/chat", {
+        method: "POST",
+        body: { model: "muse-spark-1.3", messages: [{ role: "user", content: [{ type: "video_url" }] }] },
+      }),
+      ENV,
+    );
+    assert.equal(badType.status, 400);
+  } finally {
+    delete globalThis.fetch;
+  }
+});
+test("chat forwards reasoning_effort and validates it", async () => {
+  stubFetch(() => new Response("{}", { headers: { "content-type": "application/json" } }));
+  try {
+    const res = await handler.fetch(
+      authed("/ai/chat", {
+        method: "POST",
+        body: { model: "muse-spark-1.3", messages: [{ role: "user", content: "hi" }], reasoning_effort: "low" },
+      }),
+      ENV,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(JSON.parse(lastFetch.init.body).reasoning_effort, "low");
+
+    const plain = await handler.fetch(
+      authed("/ai/chat", {
+        method: "POST",
+        body: { model: "muse-spark-1.3", messages: [{ role: "user", content: "hi" }] },
+      }),
+      ENV,
+    );
+    assert.equal(plain.status, 200);
+    assert.equal("reasoning_effort" in JSON.parse(lastFetch.init.body), false);
+
+    for (const bad of ["none", "ultra", 42]) {
+      const rejected = await handler.fetch(
+        authed("/ai/chat", {
+          method: "POST",
+          body: { model: "muse-spark-1.3", messages: [{ role: "user", content: "hi" }], reasoning_effort: bad },
+        }),
+        ENV,
+      );
+      assert.equal(rejected.status, 400);
+    }
+  } finally {
+    delete globalThis.fetch;
+  }
+});
+test("respond forwards to Responses API with validation", async () => {
+  stubFetch(
+    () =>
+      new Response(JSON.stringify({ id: "resp_1", output: [] }), {
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  try {
+    const res = await handler.fetch(
+      authed("/ai/respond", {
+        method: "POST",
+        body: { model: "muse-spark-1.3", input: "hola", reasoning: { effort: "low", summary: "concise" } },
+      }),
+      ENV,
+    );
+    assert.equal(res.status, 200);
+    assert.match(lastFetch.url, /^https:\/\/api\.meta\.ai\/v1\/responses$/);
+    assert.equal(lastFetch.init.headers.authorization, "Bearer meta-key");
+    const sent = JSON.parse(lastFetch.init.body);
+    assert.equal(sent.store, false);
+    assert.deepEqual(sent.reasoning, { effort: "low", summary: "concise" });
+    assert.equal(sent.max_output_tokens, 2048);
+
+    const withTemp = await handler.fetch(
+      authed("/ai/respond", {
+        method: "POST",
+        body: { model: "muse-spark-1.3", input: "hola", temperature: 0.2 },
+      }),
+      ENV,
+    );
+    assert.equal(withTemp.status, 200);
+    assert.equal(JSON.parse(lastFetch.init.body).temperature, 0.2);
+
+    for (const bad of [
+      { model: "gpt-4", input: "hi" },
+      { model: "muse-spark-1.3", input: "" },
+      { model: "muse-spark-1.3", input: "hi", reasoning: { effort: "none" } },
+      { model: "muse-spark-1.3", input: "hi", reasoning: { summary: "verbose" } },
+      { model: "muse-spark-1.3", input: "hi", reasoning: "low" },
+      { model: "muse-spark-1.3", input: "hi", temperature: 5 },
+      { model: "muse-spark-1.3", input: "hi", temperature: "low" },
+    ]) {
+      const rejected = await handler.fetch(authed("/ai/respond", { method: "POST", body: bad }), ENV);
+      assert.equal(rejected.status, 400);
+    }
+  } finally {
+    delete globalThis.fetch;
+  }
+});
+
 test("chat caps max_tokens and rejects other models", async () => {
   stubFetch(() => new Response("{}", { headers: { "content-type": "application/json" } }));
   try {
