@@ -12,8 +12,8 @@ export default function NewVideoView({ initial, onSubmit }) {
   return (
     <div class="nv-page">
       <div class="nv-card">
-        <h1>Nuevo video</h1>
-        <p>Describe el video y elige su ratio. Enter lo envía a generar.</p>
+        <h1>New video</h1>
+        <p>Describe the video and pick its ratio. Enter sends it to generate.</p>
         <label class="nv-label" for="nv-prompt">Prompt</label>
         <textarea
           id="nv-prompt"
@@ -24,7 +24,7 @@ export default function NewVideoView({ initial, onSubmit }) {
           placeholder="Describe what you want in your video"
           aria-label="Describe your video"
         />
-        <div class="nv-hint">Enter ↵ envía · Shift+Enter salto de línea</div>
+        <div class="nv-hint">Enter ↵ sends · Shift+Enter for a new line</div>
         <span class="nv-label" id="nv-ratio-label">Ratio</span>
         <div class="nv-ratios" role="group" aria-labelledby="nv-ratio-label">
           {RATIOS.map((r) => (
@@ -33,7 +33,7 @@ export default function NewVideoView({ initial, onSubmit }) {
             </button>
           ))}
         </div>
-        <button class="nv-submit" disabled={!ready()} onClick={submit}>Generar video</button>
+        <button class="nv-submit" disabled={!ready()} onClick={submit}>Generate video</button>
       </div>
     </div>
   );

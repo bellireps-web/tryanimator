@@ -8,11 +8,11 @@ import "./studio.css";
 
 const PREVIEW_H = 479;
 const PATCH_PHASE = {
-  queued: "En cola",
-  resolving: "Consultando al agente",
-  authoring: "Re-dibujando escenas",
-  rendering: "Renderizando",
-  done: "Listo",
+  queued: "Queued",
+  resolving: "Contacting the agent",
+  authoring: "Redrawing scenes",
+  rendering: "Rendering",
+  done: "Done",
   failed: "Error",
 };
 const ratioWidth = (ratio) => {
@@ -36,11 +36,11 @@ function fmtGate(job) {
   const parts = retried.map((r) => {
     const why = (r.problems || []).join("; ").slice(0, 100);
     const after = r.retryProblems && r.retryProblems.length
-      ? ` → sigue: ${r.retryProblems.join("; ").slice(0, 100)}`
+      ? ` → still: ${r.retryProblems.join("; ").slice(0, 100)}`
       : " → ok";
-    return `escena ${r.scene} [${why}]${after}`;
+    return `scene ${r.scene} [${why}]${after}`;
   });
-  return ` · gate: reintento ${parts.join(", ")}`;
+  return ` · gate: retry ${parts.join(", ")}`;
 }
 
 /** "12.4k tokens (11.9k razonando) · 62% caché" or null when nothing was metered. */
@@ -52,8 +52,8 @@ export function fmtTokens(usage) {
   const k = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
   const reasoning = usage.reasoning_tokens || 0;
   const cached = usage.cached_tokens || 0;
-  const hit = prompt > 0 && cached > 0 ? ` · ${Math.round((cached / prompt) * 100)}% caché` : "";
-  return (reasoning ? `${k(total)} tokens (${k(reasoning)} razonando)` : `${k(total)} tokens`) + hit;
+  const hit = prompt > 0 && cached > 0 ? ` · ${Math.round((cached / prompt) * 100)}% cached` : "";
+  return (reasoning ? `${k(total)} tokens (${k(reasoning)} reasoning)` : `${k(total)} tokens`) + hit;
 }
 
 export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone, motionJob, motionSnap, adapters, onMotionSnap }) {
@@ -99,10 +99,10 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
     return !!((j && j.state === "failed") || genError());
   };
   const genPct = () => Math.round(((motionSnap && motionSnap.progress) || 0) * 100);
-  const genPhase = () => PATCH_PHASE[(motionSnap && motionSnap.state) || (mJob() && mJob().state)] ?? "Creando";
+  const genPhase = () => PATCH_PHASE[(motionSnap && motionSnap.state) || (mJob() && mJob().state)] ?? "Creating";
   const genFailMessage = () => {
     const err = genError() || (mJob() && mJob().error);
-    return err ? `Error [${err.code || "failed"}]: ${err.message || err}` : "Error generando el video";
+    return err ? `Error [${err.code || "failed"}]: ${err.message || err}` : "Error generating the video";
   };
   const [playing, setPlaying] = createSignal(false);
   const [muted, setMuted] = createSignal(false);
@@ -161,9 +161,9 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
         const thought = fmtTokens(arrived.result.usage);
         setMsgs((m) => [...m, {
           kind: "ai",
-          text: `Composición v1 lista · ${p.scenes.length} ${p.scenes.length === 1 ? "escena" : "escenas"} · ${p.duration}s`,
+          text: `Composition v1 ready · ${p.scenes.length} ${p.scenes.length === 1 ? "scene" : "scenes"} · ${p.duration}s`,
           thinking: arrived.result.thinking || undefined,
-          trace: thought ? `pensó ${thought}` : undefined,
+          trace: thought ? `used ${thought}` : undefined,
         }]);
       }
     }
@@ -189,9 +189,9 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
           const gateBits = fmtGate(pending).replace(/^ · /, "");
           setMsgs((m) => [...m, {
             kind: "ai",
-            text: `Composición v1 lista · ${p.scenes.length} ${p.scenes.length === 1 ? "escena" : "escenas"} · ${p.duration}s`,
+            text: `Composition v1 ready · ${p.scenes.length} ${p.scenes.length === 1 ? "scene" : "scenes"} · ${p.duration}s`,
             thinking: pending.result.thinking || undefined,
-            trace: [thought ? `pensó ${thought}` : "", gateBits].filter(Boolean).join(" · ") || undefined,
+            trace: [thought ? `used ${thought}` : "", gateBits].filter(Boolean).join(" · ") || undefined,
             steps: genSteps.length ? [...genSteps] : undefined,
           }]);
           if (onJobDone) await onJobDone(pending);
@@ -278,8 +278,8 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
         setMJob(retry);
         const thought = fmtTokens(retry.result.usage);
         const trace =
-          `Composición v${version} · ${next.scenes.length} ${next.scenes.length === 1 ? "escena" : "escenas"} · ${next.duration}s` +
-          (rebuilt.length ? ` · re-hechas [${rebuilt.join(", ")}]` : "") +
+          `Composition v${version} · ${next.scenes.length} ${next.scenes.length === 1 ? "scene" : "scenes"} · ${next.duration}s` +
+          (rebuilt.length ? ` · rebuilt [${rebuilt.join(", ")}]` : "") +
           (thought ? ` · ${thought}` : "") +
           fmtGate(retry);
         const newMsgs = [...msgs(), { kind: "ai", text: words || "Cambios aplicados.", thinking: thinking || undefined, trace, steps: turnSteps.length ? [...turnSteps] : undefined, ops: ops && ops.length ? ops : undefined }];
@@ -323,12 +323,12 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
   const addContext = () => {
     const mp = motionPlan();
     if (mp) {
-      setMsgs((m) => [...m, { kind: "ctx", text: `Motion: ${mp.scenes.length} escenas, ${mp.duration}s, lienzo libre en ${ratio()}` }]);
+      setMsgs((m) => [...m, { kind: "ctx", text: `Motion: ${mp.scenes.length} scenes, ${mp.duration}s, free canvas at ${ratio()}` }]);
       return;
     }
     const p = plan();
     if (!p || p.error) return;
-    setMsgs((m) => [...m, { kind: "ctx", text: `Contexto: ${p.captions.length} captions, ${p.brolls.length} b-rolls, ${p.timelineDuration.toFixed(1)}s en ${ratio()}` }]);
+    setMsgs((m) => [...m, { kind: "ctx", text: `Context: ${p.captions.length} captions, ${p.brolls.length} b-rolls, ${p.timelineDuration.toFixed(1)}s at ${ratio()}` }]);
   };
   const downloadMotion = () => {
     const video = mJob()?.result?.video;
@@ -388,9 +388,9 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
 
   return (
     <div class="st-page">
-      <aside class="st-left" aria-label="Chat del editor">
+      <aside class="st-left" aria-label="Editor chat">
         <div class="st-top">
-          <button class="st-back" onClick={onNewVideo} aria-label="Nuevo video"><BackArrow /><span>New Video</span></button>
+          <button class="st-back" onClick={onNewVideo} aria-label="New video"><BackArrow /><span>New Video</span></button>
           <button class="st-plus">Upgrade to Plus</button>
         </div>
         <div class="st-thread" ref={(el) => { threadEl = el; }} aria-live="polite">
@@ -398,14 +398,14 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
             <div class={`st-msg ${m.kind}`}>
               <Show when={m.kind === "ai" && m.thinking}>
                 <details class="st-thinking">
-                  <summary>Pensamiento</summary>
+                  <summary>Thinking</summary>
                   <div class="st-thinking-body">{m.thinking}</div>
                 </details>
               </Show>
               <Show when={m.text}><div class="st-words">{m.text}</div></Show>
               <Show when={m.kind === "ai" && m.steps && m.steps.length}>
                 <details class="st-steps">
-                  <summary>Actividad · {m.steps.length} {m.steps.length === 1 ? "paso" : "pasos"}</summary>
+                  <summary>Activity · {m.steps.length} {m.steps.length === 1 ? "step" : "steps"}</summary>
                   <div class="st-steps-body">
                     <For each={m.steps}>{(s, i) => (
                       <div class="st-step">
@@ -427,7 +427,7 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
           )}</For>
           <Show when={patching()}>
             <div class="st-msg ai" aria-live="polite">
-              {motionSnap ? `${PATCH_PHASE[motionSnap.state] ?? motionSnap.state}… ${Math.round((motionSnap.progress || 0) * 100)}%` : "Consultando al agente…"}
+              {motionSnap ? `${PATCH_PHASE[motionSnap.state] ?? motionSnap.state}… ${Math.round((motionSnap.progress || 0) * 100)}%` : "Contacting the agent…"}
             </div>
           </Show>
         </div>
@@ -437,25 +437,25 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
             value={draft()}
             onInput={(e) => setDraft(e.currentTarget.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={mJob() ? (patching() ? "Aplicando cambios…" : "Describe los cambios del motion") : "Describe the changes you want in the video"}
+            placeholder={mJob() ? (patching() ? "Applying changes…" : "Describe the motion changes") : "Describe the changes you want in the video"}
             aria-label="Describe the changes you want in the video"
           />
           <div class="st-tools">
-            <button class="st-tool" onClick={addContext} aria-label="Añadir contexto del plan">+</button>
-            <button class="st-tool" onClick={cycleRatio} aria-label={`Ratio actual ${ratio()}. Cambiar`} title={ratio()}>
+            <button class="st-tool" onClick={addContext} aria-label="Add plan context">+</button>
+            <button class="st-tool" onClick={cycleRatio} aria-label={`Current ratio ${ratio()}. Change`} title={ratio()}>
               <span class="rect" style={{ display: "block", width: ratio() === "9:16" ? "10px" : ratio() === "16:9" ? "20px" : ratio() === "1:1" ? "15px" : "18px", height: ratio() === "9:16" ? "18px" : ratio() === "16:9" ? "12px" : ratio() === "1:1" ? "15px" : "13px", border: "1.5px solid #fff", "border-radius": "3px" }} />
             </button>
-            <button class="st-send" disabled={!draft().trim() || patching()} onClick={send} aria-label="Enviar"><SendIcon /></button>
+            <button class="st-send" disabled={!draft().trim() || patching()} onClick={send} aria-label="Send"><SendIcon /></button>
           </div>
         </div>
-        <p class="st-beta">This is a early beta can be errors</p>
+        <p class="st-beta">This is an early beta, so there may be errors</p>
       </aside>
 
-      <main class="st-main" aria-label="Vista previa">
+      <main class="st-main" aria-label="Preview">
         <div class="st-main-top">
           {/* Export oculto de momento (navegaba al editor en vez de exportar) */}
         </div>
-        <button class="st-capture" onClick={captureFrame} aria-label="Capturar frame actual"><Plus /><span>Capturar Frame</span></button>
+        <button class="st-capture" onClick={captureFrame} aria-label="Capture current frame"><Plus /><span>Capture Frame</span></button>
         <div class="st-stage" ref={(el) => { previewBox = el; }}>
         <div class="st-preview" style={{ width: `${ratioWidth(ratio())}px`, height: `${PREVIEW_H}px` }}>
           <Show when={videoUrl()} fallback={
@@ -463,7 +463,7 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
           <Show when={jobFailed()} fallback={
           <Show when={srcVideo()} fallback={
             <Show when={plan()?.brolls?.length} fallback={<span class="st-empty">{ratio()} · {fmt(duration())}</span>}>
-              <img src="poster.png" alt={`Fotograma en ${fmt(t())}`} />
+              <img src="poster.png" alt={`Frame at ${fmt(t())}`} />
             </Show>
           }>
             {(v) => (
@@ -483,11 +483,11 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
           }>
             <div class="st-loading-error" role="alert">
               <span>{genFailMessage()}</span>
-              <button type="button" onClick={onNewVideo}>Volver</button>
+              <button type="button" onClick={onNewVideo}>Back</button>
             </div>
           </Show>
           }>
-            <div class="ld-dream" role="img" aria-label={`Generando video: ${genPhase()}, ${genPct()}%`}>
+            <div class="ld-dream" role="img" aria-label={`Generating video: ${genPhase()}, ${genPct()}%`}>
               <span class="blob b1" aria-hidden="true" />
               <span class="blob b2" aria-hidden="true" />
               <span class="blob b3" aria-hidden="true" />
@@ -514,25 +514,25 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
           <div class="st-loading-status" aria-live="polite"><b>{genPct()}%</b><span>{genPhase()}</span></div>
         </Show>
         <div class="st-transport">
-          <button class="st-play" onClick={togglePlay} aria-label={playing() ? "Pausar" : "Reproducir"}>
+          <button class="st-play" onClick={togglePlay} aria-label={playing() ? "Pause" : "Play"}>
             {playing() ? <Pause /> : <Play />}
           </button>
-          <div class="st-track" onClick={seek} role="slider" aria-label="Posición" aria-valuemin={0} aria-valuemax={Math.round(duration())} aria-valuenow={Math.round(t())}>
+          <div class="st-track" onClick={seek} role="slider" aria-label="Position" aria-valuemin={0} aria-valuemax={Math.round(duration())} aria-valuenow={Math.round(t())}>
             <div class="st-fill" style={{ transform: `scaleX(${duration() ? t() / duration() : 0})` }} />
           </div>
           <span class="st-time">{fmt(t())} / {fmt(duration())}</span>
-          <button class="st-play" onClick={toggleMute} aria-label={muted() ? "Activar sonido" : "Silenciar"}>
+          <button class="st-play" onClick={toggleMute} aria-label={muted() ? "Unmute" : "Mute"}>
             {muted() ? <VolumeX /> : <Volume2 />}
           </button>
-          <button class="st-play" onClick={toggleFull} aria-label={isFull() ? "Salir de pantalla completa" : "Pantalla completa"}>
+          <button class="st-play" onClick={toggleFull} aria-label={isFull() ? "Exit fullscreen" : "Enter fullscreen"}>
             {isFull() ? <Minimize /> : <Maximize />}
           </button>
         </div>
         </div>
         <Show when={(job.elements ?? []).length || srcVideo() || motionPlan()}>
-          <div class="st-elements" aria-label="Entrada del edit">
+          <div class="st-elements" aria-label="Edit input">
             <Show when={srcVideo()}><span class="st-chip src">▸ {srcVideo().name ?? "video"}</span></Show>
-            <Show when={motionPlan()}><span class="st-chip src">▸ motion · lienzo libre · {motionPlan().scenes.length} escenas · v{compVersion()}{mJob()?.input?.referenceImages?.length ? ` · ${mJob().input.referenceImages.length} ref` : ""}{mJob()?.input?.hasVideoReference ? " · video ref" : ""}</span></Show>
+            <Show when={motionPlan()}><span class="st-chip src">▸ motion · free canvas · {motionPlan().scenes.length} scenes · v{compVersion()}{mJob()?.input?.referenceImages?.length ? ` · ${mJob().input.referenceImages.length} refs` : ""}{mJob()?.input?.hasVideoReference ? " · video ref" : ""}</span></Show>
             <Show when={motionSnap}><span class="st-chip">{motionSnap.state} {Math.round((motionSnap.progress || 0) * 100)}%</span></Show>
             <For each={job.elements ?? []}>{(e) => <span class="st-chip">{e}</span>}</For>
           </div>

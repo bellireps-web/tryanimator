@@ -90,7 +90,7 @@ function AuthForm() {
   const base = {
     routing: "virtual",
     fallbackRedirectUrl: `${window.location.origin}/#editor`,
-    fallback: React.createElement("div", { className: "auth-loading" }, "Cargando login…"),
+    fallback: React.createElement("div", { className: "auth-loading" }, "Loading sign-in…"),
     appearance: {
       elements: {
         footerAction: { display: "none" },

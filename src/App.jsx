@@ -160,15 +160,15 @@ function toggleEditorMute(button) {
     document.querySelectorAll(".editor-rect-video .motion-video").forEach((v) => {
       v.muted = true;
       const b = v.closest(".editor-rect-video") && v.closest(".editor-rect-video").querySelector(".editor-mute");
-      if (b) { b.classList.add("muted"); b.setAttribute("aria-label", "Activar audio"); }
+      if (b) { b.classList.add("muted"); b.setAttribute("aria-label", "Unmute"); }
     });
     video.muted = false;
     button.classList.remove("muted");
-    button.setAttribute("aria-label", "Quitar audio");
+    button.setAttribute("aria-label", "Mute");
   } else {
     video.muted = true;
     button.classList.add("muted");
-    button.setAttribute("aria-label", "Activar audio");
+    button.setAttribute("aria-label", "Unmute");
   }
 }
 function toggleMotionVideo(button) {
@@ -299,12 +299,12 @@ function ProjectsView({ onNewProject, onOpenComp }) {
           </div>
           <h2>New Project</h2>
         </article>
-        <Show when={comps() === null}><p class="projects-empty">Cargando proyectos…</p></Show>
-        <Show when={comps() !== null && comps().length === 0}><p class="projects-empty">Aún no hay composiciones: crea tu primer video.</p></Show>
+        <Show when={comps() === null}><p class="projects-empty">Loading projects…</p></Show>
+        <Show when={comps() !== null && comps().length === 0}><p class="projects-empty">No compositions yet: create your first video.</p></Show>
         {comps() && comps().map((comp) => <article class="project-card">
-          <div class="project-preview" style={{ "--project-fill": colorFor(comp.id) }} onClick={() => onOpenComp && onOpenComp(comp)} role="button" tabindex="0" aria-label={`Abrir ${comp.name}`}>
+          <div class="project-preview" style={{ "--project-fill": colorFor(comp.id) }} onClick={() => onOpenComp && onOpenComp(comp)} role="button" tabindex="0" aria-label={`Open ${comp.name}`}>
             <CompThumb video={comp.video} />
-            <button class="project-more" aria-label={`Eliminar ${comp.name}`} onClick={(event) => removeComp(comp.id, event)}>×</button>
+            <button class="project-more" aria-label={`Delete ${comp.name}`} onClick={(event) => removeComp(comp.id, event)}>×</button>
           </div>
           <h2>{comp.name}</h2>
           <p class="project-meta">{metaFor(comp)}</p>
@@ -328,7 +328,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
   const durationLabel = () => motionDuration() === "Auto" ? "Auto" : `${motionDuration()}s`;
   const [motionScenes, setMotionScenes] = createSignal(1);
   const scenePresets = [1, 2, 3, 4];
-  const sceneLabel = () => motionScenes() === 1 ? "1 escena" : `${motionScenes()} escenas`;
+  const sceneLabel = () => motionScenes() === 1 ? "1 scene" : `${motionScenes()} scenes`;
   const applyCustomDuration = () => {
     const n = Math.round(Number(customDuration()));
     if (Number.isFinite(n)) setMotionDuration(Math.min(60, Math.max(1, n)));
@@ -369,7 +369,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
     if (editorMode() === "editor") {
       const first = files[0];
       if (!String(first.type || "").startsWith("video/")) {
-        setVideoError("Sube un video (mp4/mov) para editar.");
+        setVideoError("Upload a video (mp4/mov) to edit.");
         return;
       }
       setVideoError("");
@@ -392,7 +392,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
     if (editorMode() !== "motion") {
       // Editor exige 1 video; Creator no bloquea pero avisa en el job.
       if (editorMode() === "editor" && refs.length < EDITOR_VIDEO_MIN) {
-        setVideoError(`Añade ${EDITOR_VIDEO_MIN} video para editar (mínimo ${EDITOR_VIDEO_MIN}, máximo ${EDITOR_VIDEO_MAX}).`);
+        setVideoError(`Add ${EDITOR_VIDEO_MIN} video to edit (min ${EDITOR_VIDEO_MIN}, max ${EDITOR_VIDEO_MAX}).`);
         setVideoOpen(true);
         return;
       }
@@ -453,7 +453,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
           <span>Animator</span>
         </div>
         <div class="editor-sidebar-nav">
-          <div class="editor-section-title editor-principal-title">Principal</div>
+          <div class="editor-section-title editor-principal-title">Main</div>
           <button class={`editor-nav-item ${active() === "home" ? "active" : ""}`} onClick={() => { setActive("home"); setShowProjects(false); }}><Home /><span>Home</span></button>
           <button class={`editor-nav-item ${active() === "projects" ? "active" : ""}`} onClick={() => { setActive("projects"); setShowProjects(true); }}><Folder /><span>Projects</span></button>
           <div class="editor-section-title editor-assets-title">Assets</div>
@@ -511,18 +511,18 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
             <Show when={openMenu() === "scenes"}>
               <div class="editor-floating-menu elements-menu elements-selection-menu" role="menu" aria-label="Motion scenes">
                 <div class="elements-selection-grid">
-                  {scenePresets.map((n) => <button class={`element-option ${motionScenes() === n ? "selected" : ""}`} onClick={() => { setMotionScenes(n); setOpenMenu(null); }} role="menuitemradio" aria-checked={motionScenes() === n}><span>{n === 1 ? "1 escena" : `${n} escenas`}</span><span class="element-check" aria-hidden="true"><Check /></span></button>)}
+                  {scenePresets.map((n) => <button class={`element-option ${motionScenes() === n ? "selected" : ""}`} onClick={() => { setMotionScenes(n); setOpenMenu(null); }} role="menuitemradio" aria-checked={motionScenes() === n}><span>{n === 1 ? "1 scene" : `${n} scenes`}</span><span class="element-check" aria-hidden="true"><Check /></span></button>)}
                 </div>
               </div>
             </Show>
             <Show when={openMenu() === "mention"}>
-              <div class="editor-floating-menu elements-menu elements-selection-menu" role="menu" aria-label="Mencionar assets">
+              <div class="editor-floating-menu elements-menu elements-selection-menu" role="menu" aria-label="Mention assets">
                 <div class="elements-selection-grid">
                   <Show when={videos().length + assets().length === 0} fallback={
                     <>{videos().map((v) => <button class="element-option" onClick={() => insertMention(v.name || "video")}><span>@{v.name || "video"}</span></button>)}
                     {assets().map((a) => <button class="element-option" onClick={() => insertMention(a.name || a.type)}><span>@{a.name || a.type}</span><span class="element-check">{a.type}</span></button>)}</>
                   }>
-                    <p class="assets-desc">Sube un video o assets para etiquetarlos con @ en el chat.</p>
+                    <p class="assets-desc">Upload a video or assets to tag them with @ in the chat.</p>
                   </Show>
                 </div>
               </div>
@@ -532,7 +532,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
                 {[["9:16", "ratio-9-16"], ["16:9", "ratio-16-9"], ["1:1", "ratio-1-1"], ["4:3", "ratio-4-3"]].map(([label, cls]) => <button class={`floating-menu-item ${format() === label ? "active" : ""}`} role="menuitemradio" aria-checked={format() === label} onClick={() => setFormat(label)}><span class={`ratio-rect ${cls}`} aria-hidden="true" /><span>{label}</span></button>)}
               </div>
             </Show>
-            <div class="editor-toolbar"><button class={`toolbar-elements ${openMenu() === "elements" ? "open" : ""}`} onClick={() => toggleMenu("elements")}>{editorMode() === "motion" ? durationLabel() : <>Elements <ChevronDown aria-hidden="true" /></>}</button><Show when={editorMode() === "motion"}><button class={`toolbar-elements ${openMenu() === "scenes" ? "open" : ""}`} onClick={() => toggleMenu("scenes")} aria-label="Número de escenas">{sceneLabel()}</button></Show><button class="toolbar-format" onClick={() => toggleMenu("format")}><span class={`toolbar-format-rectangle ${format() === "16:9" ? "landscape" : format() === "1:1" ? "square" : format() === "4:3" ? "landscape" : ""}`} aria-hidden="true" /><span>{format()}</span></button><button class="toolbar-at" aria-label="Mention" onClick={() => toggleMenu("mention")}><AtSign /></button><button class="editor-submit" disabled={!prompt().trim() || referenceBusy()} onClick={submitEdit}>{referenceBusy() ? "Preparando…" : editorMode() === "editor" ? "Edit it" : "Create it"}<Play /></button></div>
+            <div class="editor-toolbar"><button class={`toolbar-elements ${openMenu() === "elements" ? "open" : ""}`} onClick={() => toggleMenu("elements")}>{editorMode() === "motion" ? durationLabel() : <>Elements <ChevronDown aria-hidden="true" /></>}</button><Show when={editorMode() === "motion"}><button class={`toolbar-elements ${openMenu() === "scenes" ? "open" : ""}`} onClick={() => toggleMenu("scenes")} aria-label="Scene count">{sceneLabel()}</button></Show><button class="toolbar-format" onClick={() => toggleMenu("format")}><span class={`toolbar-format-rectangle ${format() === "16:9" ? "landscape" : format() === "1:1" ? "square" : format() === "4:3" ? "landscape" : ""}`} aria-hidden="true" /><span>{format()}</span></button><button class="toolbar-at" aria-label="Mention" onClick={() => toggleMenu("mention")}><AtSign /></button><button class="editor-submit" disabled={!prompt().trim() || referenceBusy()} onClick={submitEdit}>{referenceBusy() ? "Preparing…" : editorMode() === "editor" ? "Edit it" : "Create it"}<Play /></button></div>
           </div>
         </div>
         <Show when={editNotice()}><p class="editor-notice" role="status">{editNotice()}</p></Show>
@@ -552,7 +552,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
         <div class="assets-overlay" onClick={() => setAssetsOpen(false)}>
           <div class="assets-modal" onClick={(event) => event.stopPropagation()}>
             <h2 class="assets-title">Add assets</h2>
-            <p class="assets-desc">Upload assets para que el agente pueda usarlo para editar tus videos, puedes escribir como quieres que los utilices y en el chat puedes usar el @ para contextualizar.</p>
+            <p class="assets-desc">Upload assets so the agent can use them in your edits. Describe how to use them, and mention them with @ in the chat.</p>
             <button class="assets-close" onClick={() => setAssetsOpen(false)} aria-label="Close"><X /></button>
             <div class="assets-grid">
               <label class="assets-upload assets-upload-btn"><span class="assets-upload-label">Upload Images</span><span class="assets-plus"><Plus /></span><input type="file" accept="image/*" multiple onChange={addAsset} hidden /></label>
@@ -567,7 +567,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
         <div class="assets-overlay" onClick={() => setVideoOpen(false)}>
           <div class="assets-modal assets-modal-video" onClick={(event) => event.stopPropagation()}>
             <h2 class="assets-title">{editorMode() === "motion" ? "Add reference" : "Add video for edit"}</h2>
-            <p class="assets-desc">{editorMode() === "motion" ? `Upload up to ${MAX_REFERENCE_IMAGES} images so the agent follows their style, colors and layout. A short video also works as motion reference.` : `Sube ${EDITOR_VIDEO_MIN} video para editar (mínimo ${EDITOR_VIDEO_MIN}, máximo ${EDITOR_VIDEO_MAX}). Se usa como footage base; los assets van aparte.`}</p>
+            <p class="assets-desc">{editorMode() === "motion" ? `Upload up to ${MAX_REFERENCE_IMAGES} images so the agent follows their style, colors and layout. A short video also works as motion reference.` : `Upload ${EDITOR_VIDEO_MIN} video to edit (min ${EDITOR_VIDEO_MIN}, max ${EDITOR_VIDEO_MAX}). It's used as the base footage; assets go separately.`}</p>
             <Show when={videoError()}><p class="assets-desc" role="alert">{videoError()}</p></Show>
             <button class="assets-close" onClick={() => setVideoOpen(false)} aria-label="Close"><X /></button>
             <div class="assets-grid">
@@ -586,11 +586,11 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
         <div class="assets-overlay" onClick={() => setStylesOpen(false)}>
           <div class="assets-modal assets-modal-styles" onClick={(event) => event.stopPropagation()}>
             <h2 class="assets-title">Brand</h2>
-            <p class="assets-desc">Colores y fuente para captions, lower thirds y motion graphics.</p>
+            <p class="assets-desc">Colors and font for captions, lower thirds, and motion graphics.</p>
             <button class="assets-close" onClick={() => setStylesOpen(false)} aria-label="Close"><X /></button>
             <div class="brand-grid">
               {brandColors().map((c, i) => <label class="brand-color">Color {i + 1}<span class="brand-row"><input type="color" value={c} onInput={(e) => setBrandColor(i, e.currentTarget.value)} /><input type="text" value={c} onInput={(e) => setBrandColor(i, e.currentTarget.value)} /></span></label>)}
-              <label class="brand-color">Fuente<select value={brandFont()} onChange={(e) => setBrandFont(e.currentTarget.value)}>{BRAND_FONTS.map((f) => <option value={f}>{f}</option>)}</select></label>
+              <label class="brand-color">Font<select value={brandFont()} onChange={(e) => setBrandFont(e.currentTarget.value)}>{BRAND_FONTS.map((f) => <option value={f}>{f}</option>)}</select></label>
             </div>
           </div>
         </div>
@@ -716,11 +716,11 @@ export default function App() {
     setMotionSnap({ state: "done", progress: 1 });
     setPage("studio");
   };
-  const aiFeatures = ["High semanal usgae limits", "Edit videos with AI: B-Rolls, Effects, Zooms, Transitions, Motion Graphics, Captions", "Audio/Script to video", "AI Motion Graphics"];
+  const aiFeatures = ["High weekly usage limits", "Edit videos with AI: B-rolls, effects, zooms, transitions, motion graphics, captions", "Audio/script to video", "AI motion graphics"];
   const plans = [
-    { name: "Plus", monthly: "20$/mo", yearly: "16$/mo", desc: "A good plan for make video and edit fast", features: aiFeatures, checks: true, cta: "Get started" },
-    { name: "Pro", monthly: "40$/mo", yearly: "32$/mo", desc: "The best plan for make video and edit fast", features: ["x2.5 semanal usgae limits", ...aiFeatures.slice(1)], checks: true, cta: "Get started", badge: "Most popular" },
-    { name: "Enterprise", monthly: "Custom", yearly: "Custom", desc: "A good plan for make video and edit fast", features: ["All in Plus, Pro", "Controla de members", "Analisis the uso y controles de uso", "Custom Usage", "SAML, SSO and MFA", "Priority support"], checks: true, cta: "Contact Sales" },
+    { name: "Plus", monthly: "20$/mo", yearly: "16$/mo", desc: "A good plan to make videos and edit fast", features: aiFeatures, checks: true, cta: "Get started" },
+    { name: "Pro", monthly: "40$/mo", yearly: "32$/mo", desc: "The best plan to make videos and edit fast", features: ["2.5x weekly usage limits", ...aiFeatures.slice(1)], checks: true, cta: "Get started", badge: "Most popular" },
+    { name: "Enterprise", monthly: "Custom", yearly: "Custom", desc: "A tailored plan to make videos and edit fast", features: ["Everything in Plus and Pro", "Member management", "Usage analytics and controls", "Custom usage limits", "SAML, SSO and MFA", "Priority support"], checks: true, cta: "Contact Sales" },
   ];
   const finishOnboarding = () => {
     localStorage.setItem("autoedit_onboarding_done", "1");
@@ -781,9 +781,9 @@ export default function App() {
             </div>)}</Show>
           </section>
           <section class={`landing-showcase landing-showcase-${landingMode()}`} aria-label="Before and after video editing">
-            <Show keyed when={landingMode()} fallback={null}>{() => landingMode() === "creator" ? <a class="landing-card landing-card-creator landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="creator-square creator-square-back"><FileText strokeWidth={3} /><b>Script</b><span class="creator-lines"><i /><i /><i /></span></span><span class="creator-square creator-square-front"><AudioLines strokeWidth={3} /><b>Audio</b><span class="creator-wave"><i /><i /><i /><i /><i /><i /><i /></span></span></a> : landingMode() === "motion" ? <a class="landing-card landing-card-motion landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="motion-rect" /><span class="motion-prompt">I want a graphic like this, but with these metrics and this style</span></a> : <a class="landing-card landing-card-editor landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="editor-rect editor-rect-video"><video class="motion-video" src="/editor-before-preview.mp4" autoplay muted loop playsinline preload="auto" ref={(el) => el?.play()?.catch(() => {})} onPlay={(event) => syncMotionPlay(event.currentTarget, true)} onPause={(event) => syncMotionPlay(event.currentTarget, false)} /><button class="motion-play" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMotionVideo(event.currentTarget); }} aria-label="Play before"><span class="icon-play"><Play /></span><span class="icon-pause"><Pause /></span></button><button class="editor-mute muted" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleEditorMute(event.currentTarget); }} aria-label="Activar audio"><span class="icon-muted"><VolumeX /></span><span class="icon-unmuted"><Volume2 /></span></button></span></a>}</Show>
+            <Show keyed when={landingMode()} fallback={null}>{() => landingMode() === "creator" ? <a class="landing-card landing-card-creator landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="creator-square creator-square-back"><FileText strokeWidth={3} /><b>Script</b><span class="creator-lines"><i /><i /><i /></span></span><span class="creator-square creator-square-front"><AudioLines strokeWidth={3} /><b>Audio</b><span class="creator-wave"><i /><i /><i /><i /><i /><i /><i /></span></span></a> : landingMode() === "motion" ? <a class="landing-card landing-card-motion landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="motion-rect" /><span class="motion-prompt">I want a graphic like this, but with these metrics and this style</span></a> : <a class="landing-card landing-card-editor landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="editor-rect editor-rect-video"><video class="motion-video" src="/editor-before-preview.mp4" autoplay muted loop playsinline preload="auto" ref={(el) => el?.play()?.catch(() => {})} onPlay={(event) => syncMotionPlay(event.currentTarget, true)} onPause={(event) => syncMotionPlay(event.currentTarget, false)} /><button class="motion-play" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMotionVideo(event.currentTarget); }} aria-label="Play before"><span class="icon-play"><Play /></span><span class="icon-pause"><Pause /></span></button><button class="editor-mute muted" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleEditorMute(event.currentTarget); }} aria-label="Unmute"><span class="icon-muted"><VolumeX /></span><span class="icon-unmuted"><Volume2 /></span></button></span></a>}</Show>
             <img class="landing-arrow" src="/vector-6.svg" alt="" aria-hidden="true" />
-            <Show keyed when={landingMode()} fallback={null}>{() => landingMode() === "motion" ? <a class="landing-card landing-card-motion-right landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="motion-rect motion-rect-video"><video class="motion-video" src="/animator-arr.mp4" autoplay muted loop playsinline preload="auto" ref={(el) => el?.play()?.catch(() => {})} onPlay={(event) => syncMotionPlay(event.currentTarget, true)} onPause={(event) => syncMotionPlay(event.currentTarget, false)} /><button class="motion-play" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMotionVideo(event.currentTarget); }} aria-label="Play chart"><span class="icon-play"><Play /></span><span class="icon-pause"><Pause /></span></button></span></a> : landingMode() === "creator" ? <a class="landing-card landing-card-creator-right landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="creator-rect creator-rect-video"><video class="motion-video" src="/animator-promo-vertical.mp4" autoplay muted loop playsinline preload="auto" ref={(el) => el?.play()?.catch(() => {})} onPlay={(event) => syncMotionPlay(event.currentTarget, true)} onPause={(event) => syncMotionPlay(event.currentTarget, false)} /><button class="motion-play" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMotionVideo(event.currentTarget); }} aria-label="Play promo"><span class="icon-play"><Play /></span><span class="icon-pause"><Pause /></span></button></span></a> : <a class="landing-card landing-card-editor landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="editor-rect editor-rect-video"><video class="motion-video" src="/editor-after-preview.mp4" autoplay muted loop playsinline preload="auto" ref={(el) => el?.play()?.catch(() => {})} onPlay={(event) => syncMotionPlay(event.currentTarget, true)} onPause={(event) => syncMotionPlay(event.currentTarget, false)} /><button class="motion-play" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMotionVideo(event.currentTarget); }} aria-label="Play after"><span class="icon-play"><Play /></span><span class="icon-pause"><Pause /></span></button><button class="editor-mute muted" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleEditorMute(event.currentTarget); }} aria-label="Activar audio"><span class="icon-muted"><VolumeX /></span><span class="icon-unmuted"><Volume2 /></span></button></span></a>}</Show>
+            <Show keyed when={landingMode()} fallback={null}>{() => landingMode() === "motion" ? <a class="landing-card landing-card-motion-right landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="motion-rect motion-rect-video"><video class="motion-video" src="/animator-arr.mp4" autoplay muted loop playsinline preload="auto" ref={(el) => el?.play()?.catch(() => {})} onPlay={(event) => syncMotionPlay(event.currentTarget, true)} onPause={(event) => syncMotionPlay(event.currentTarget, false)} /><button class="motion-play" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMotionVideo(event.currentTarget); }} aria-label="Play chart"><span class="icon-play"><Play /></span><span class="icon-pause"><Pause /></span></button></span></a> : landingMode() === "creator" ? <a class="landing-card landing-card-creator-right landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="creator-rect creator-rect-video"><video class="motion-video" src="/animator-promo-vertical.mp4" autoplay muted loop playsinline preload="auto" ref={(el) => el?.play()?.catch(() => {})} onPlay={(event) => syncMotionPlay(event.currentTarget, true)} onPause={(event) => syncMotionPlay(event.currentTarget, false)} /><button class="motion-play" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMotionVideo(event.currentTarget); }} aria-label="Play promo"><span class="icon-play"><Play /></span><span class="icon-pause"><Pause /></span></button></span></a> : <a class="landing-card landing-card-editor landing-mode-animate" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }} aria-label="Open editor"><span class="editor-rect editor-rect-video"><video class="motion-video" src="/editor-after-preview.mp4" autoplay muted loop playsinline preload="auto" ref={(el) => el?.play()?.catch(() => {})} onPlay={(event) => syncMotionPlay(event.currentTarget, true)} onPause={(event) => syncMotionPlay(event.currentTarget, false)} /><button class="motion-play" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMotionVideo(event.currentTarget); }} aria-label="Play after"><span class="icon-play"><Play /></span><span class="icon-pause"><Pause /></span></button><button class="editor-mute muted" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleEditorMute(event.currentTarget); }} aria-label="Unmute"><span class="icon-muted"><VolumeX /></span><span class="icon-unmuted"><Volume2 /></span></button></span></a>}</Show>
           </section>
           <section class={`landing-features landing-features-${landingMode()}`} aria-label="Animator features">
             <h2 class="landing-features-title">Built by editors, for creators:</h2>
@@ -1017,7 +1017,7 @@ export default function App() {
       {/* Studio oculto de momento: placeholder en vez del editor */}
       <div class="st-unavailable" role="status">
         <p>El Studio estará disponible en 24 horas.</p>
-        <button type="button" onClick={() => { setEditorProjects(true); setPage("editor"); }}>Volver al editor</button>
+        <button type="button" onClick={() => { setEditorProjects(true); setPage("editor"); }}>Back to editor</button>
       </div>
       </Show>
       }>

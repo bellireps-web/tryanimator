@@ -3,7 +3,7 @@ import { Sparkles } from "lucide-solid";
 import "./studio.css";
 
 const TOTAL_MS = 12000;
-// Element -> fase del pipeline. El resto queda en cola del agente (visible, sin aplicar).
+// Element -> pipeline stage. The rest stays in the agent queue (visible, not applied).
 const STAGE_OF = { "Remove Silences": "silence", Captions: "captions", "B Rolls": "brolls" };
 const CARD_BOX = { "16:9": [640, 360], "9:16": [270, 480], "1:1": [400, 400], "4:3": [480, 360] };
 
@@ -51,8 +51,8 @@ export default function LoadingView({ job, onDone }) {
       return `${word} (${c})`;
     };
     const mid = selected.filter((e) => e in STAGE_OF).map((e) => n(STAGE_OF[e], p,
-      e === "Remove Silences" ? "Cortando silencios" : e === "Captions" ? "Escribiendo captions" : "Colocando b-rolls"));
-    return ["Analizando prompt", ...mid, "Montando timeline"];
+      e === "Remove Silences" ? "Cutting silences" : e === "Captions" ? "Writing captions" : "Placing b-rolls"));
+    return ["Reading prompt", ...mid, "Assembling timeline"];
   };
   const phase = () => {
     const s = steps();
@@ -66,11 +66,11 @@ export default function LoadingView({ job, onDone }) {
     <div class="ld-page">
       <div class="ld-card">
         <div class="ld-ratio">{ratio}</div>
-        <div class="ld-label">Ratio del video · el agente está creando</div>
+        <div class="ld-label">Video ratio · the agent is creating it</div>
         <Show when={vids.length}>
-          <div class="ld-label">Video: {vids[0].name ?? "sin nombre"}{vids.length > 1 ? ` (+${vids.length - 1})` : ""}</div>
+          <div class="ld-label">Video: {vids[0].name ?? "unnamed"}{vids.length > 1 ? ` (+${vids.length - 1})` : ""}</div>
         </Show>
-        <div class="ld-dream" style={{ width: `${cw}px`, height: `${ch}px` }} role="img" aria-label={`Generando video ${ratio}: ${phase()}, ${Math.floor(value())}%`}>
+        <div class="ld-dream" style={{ width: `${cw}px`, height: `${ch}px` }} role="img" aria-label={`Generating video ${ratio}: ${phase()}, ${Math.floor(value())}%`}>
           <span class="blob b1" aria-hidden="true" />
           <span class="blob b2" aria-hidden="true" />
           <span class="blob b3" aria-hidden="true" />
@@ -79,17 +79,17 @@ export default function LoadingView({ job, onDone }) {
           <span class="ld-pill"><Sparkles />{phase()}…</span>
           <span class="ld-big">{Math.floor(value())}%</span>
         </div>
-        <div class="ld-bar" style={{ width: `${Math.min(cw, 420)}px` }} role="progressbar" aria-label="Progreso de generación" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.floor(value())}>
+        <div class="ld-bar" style={{ width: `${Math.min(cw, 420)}px` }} role="progressbar" aria-label="Generation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.floor(value())}>
           <div class="ld-track">
             <div class="ld-fill" style={{ transform: `scaleX(${value() / 100})` }} />
           </div>
         </div>
-        <div class="ld-sub">quedan ~{Math.ceil(left())} s · {phase()}</div>
-        <div class="ld-tags" aria-label="Elements seleccionados">
+        <div class="ld-sub">~{Math.ceil(left())}s left · {phase()}</div>
+        <div class="ld-tags" aria-label="Selected elements">
           <For each={selected}>{(e) => <span class={`ld-tag ${e in STAGE_OF ? "" : "queued"}`}>{e}</span>}</For>
         </div>
         <Show when={queued.length}>
-          <div class="ld-sub dim">en cola del agente: {queued.join(", ")}</div>
+          <div class="ld-sub dim">agent queue: {queued.join(", ")}</div>
         </Show>
       </div>
     </div>
