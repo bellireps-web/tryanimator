@@ -11,7 +11,7 @@ import { createBrowserAdapters } from "./motion/browser.js";
 import { buildCompRecord, getMotionProjects } from "./motion/projects.js";
 import { EDITOR_ELEMENTS } from "./motion/hyperframesPresets.js";
 import { mountAuthIsland, hasClerkKey, mountSettingsAuth } from "./auth/reactAuth.js";
-import { CountdownNotice } from "./Availability.jsx";
+import { CountdownNotice, pokeCountdown } from "./Availability.jsx";
 
 const EDITOR_VIDEO_MIN = 1;
 const EDITOR_VIDEO_MAX = 1;
@@ -157,8 +157,8 @@ function SettingsPop({ onClose }) {
     <div class="settings-overlay" onClick={onClose}>
       <div class="settings-pop" role="dialog" aria-label="Settings" onClick={(event) => event.stopPropagation()}>
         <p class="settings-title">Settings</p>
-        <button type="button" class="settings-item">Upgrade to Plus</button>
-        <button type="button" class="settings-item">Manage subscription</button>
+        <button type="button" class="settings-item" onClick={() => pokeCountdown()}>Upgrade to Plus</button>
+        <button type="button" class="settings-item" onClick={() => pokeCountdown()}>Manage subscription</button>
         <div class="settings-auth" ref={(el) => { slot = el; }} />
         <CountdownNotice cls="settings-notice" />
       </div>
@@ -415,7 +415,8 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
   const submitEdit = async () => {
     const text = prompt().trim();
     if (!text || referenceBusy()) return;
-    // Sends paused: Enter does nothing; the countdown notice is always on.
+    // Sends paused: clicking brings the countdown back instantly.
+    pokeCountdown();
     return;
     const refs = videos();
     if (editorMode() !== "motion") {

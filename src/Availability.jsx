@@ -13,13 +13,23 @@ function useNow(stepMs = 1000) {
 }
 
 /**
+ * Instant reappear: any click calls pokeCountdown() and every notice
+ * stays visible for 7s from that instant (on top of the global blink).
+ * Module-level on purpose: one shared beat for the whole app.
+ */
+const [wakeUntil, setWakeUntil] = createSignal(0);
+export function pokeCountdown() {
+  setWakeUntil(Date.now() + 7000);
+}
+
+/**
  * Always-on launch notice, e.g. "Available in 23:59:12.".
  * Ticks every second for everyone and blinks 7s on / 7s off in sync.
  */
 export function CountdownNotice({ prefix = "Available in", cls = "" }) {
   const now = useNow();
   return (
-    <Show when={blinkOn(now())}>
+    <Show when={blinkOn(now()) || now() < wakeUntil()}>
       <p class={cls} role="status">
         {remainingMs(now()) > 0 ? `${prefix} ${fmtCountdown(remainingMs(now()))}.` : "Available now."}
       </p>
