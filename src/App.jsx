@@ -11,6 +11,7 @@ import { createBrowserAdapters } from "./motion/browser.js";
 import { buildCompRecord, getMotionProjects } from "./motion/projects.js";
 import { EDITOR_ELEMENTS } from "./motion/hyperframesPresets.js";
 import { mountAuthIsland, hasClerkKey, mountSettingsAuth } from "./auth/reactAuth.js";
+import { CountdownNotice } from "./Availability.jsx";
 
 const EDITOR_VIDEO_MIN = 1;
 const EDITOR_VIDEO_MAX = 1;
@@ -140,7 +141,6 @@ function AuthIsland() {
 function SettingsPop({ onClose }) {
   let slot = null;
   let unmount = () => {};
-  const [notice, setNotice] = createSignal("");
   const goLogin = () => {
     onClose();
     window.location.hash = "onboarding";
@@ -157,10 +157,10 @@ function SettingsPop({ onClose }) {
     <div class="settings-overlay" onClick={onClose}>
       <div class="settings-pop" role="dialog" aria-label="Settings" onClick={(event) => event.stopPropagation()}>
         <p class="settings-title">Settings</p>
-        <button type="button" class="settings-item" onClick={() => setNotice("Disponible en 24 horas.")}>Upgrade to Plus</button>
-        <button type="button" class="settings-item" onClick={() => setNotice("Disponible en 24 horas.")}>Manage subscription</button>
+        <button type="button" class="settings-item">Upgrade to Plus</button>
+        <button type="button" class="settings-item">Manage subscription</button>
         <div class="settings-auth" ref={(el) => { slot = el; }} />
-        <Show when={notice()}><p class="settings-notice" role="status">{notice()}</p></Show>
+        <CountdownNotice cls="settings-notice" />
       </div>
     </div>
   );
@@ -390,7 +390,6 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
   const [assets, setAssets] = createSignal([]);
   const [referenceBusy, setReferenceBusy] = createSignal(false);
   const [videoError, setVideoError] = createSignal("");
-  const [editNotice, setEditNotice] = createSignal("");
   const editorVideoFull = () => editorMode() === "editor" && videos().length >= EDITOR_VIDEO_MAX;
   const addVideoFile = (event) => {
     const files = Array.from(event.currentTarget.files);
@@ -416,8 +415,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
   const submitEdit = async () => {
     const text = prompt().trim();
     if (!text || referenceBusy()) return;
-    // Envíos pausados: al dar a Edit it / Create it solo se avisa.
-    setEditNotice("Disponible en 24 horas.");
+    // Sends paused: Enter does nothing; the countdown notice is always on.
     return;
     const refs = videos();
     if (editorMode() !== "motion") {
@@ -566,7 +564,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
             <div class="editor-toolbar"><button class={`toolbar-elements ${openMenu() === "elements" ? "open" : ""}`} onClick={() => toggleMenu("elements")}>{editorMode() === "motion" ? durationLabel() : <>Elements <ChevronDown aria-hidden="true" /></>}</button><Show when={editorMode() === "motion"}><button class={`toolbar-elements ${openMenu() === "scenes" ? "open" : ""}`} onClick={() => toggleMenu("scenes")} aria-label="Scene count">{sceneLabel()}</button></Show><button class="toolbar-format" onClick={() => toggleMenu("format")}><span class={`toolbar-format-rectangle ${format() === "16:9" ? "landscape" : format() === "1:1" ? "square" : format() === "4:3" ? "landscape" : ""}`} aria-hidden="true" /><span>{format()}</span></button><button class="toolbar-at" aria-label="Mention" onClick={() => toggleMenu("mention")}><AtSign /></button><button class="editor-submit" disabled={!prompt().trim() || referenceBusy()} onClick={submitEdit}>{referenceBusy() ? "Preparing…" : editorMode() === "editor" ? "Edit it" : "Create it"}<Play /></button></div>
           </div>
         </div>
-        <Show when={editNotice()}><p class="editor-notice" role="status">{editNotice()}</p></Show>
+        <CountdownNotice cls="editor-notice" />
         <div class="editor-beta">This is an early beta, so there may be errors</div>
       </main>
       }>
@@ -1050,7 +1048,7 @@ export default function App() {
       }>
       {/* Studio oculto de momento: placeholder en vez del editor */}
       <div class="st-unavailable" role="status">
-        <p>El Studio estará disponible en 24 horas.</p>
+        <CountdownNotice prefix="The Studio will be available in" />
         <button type="button" onClick={() => { setEditorProjects(true); setPage("editor"); }}>Back to editor</button>
       </div>
       </Show>
