@@ -17,6 +17,28 @@ const EDITOR_VIDEO_MIN = 1;
 const EDITOR_VIDEO_MAX = 1;
 const BRAND_FONTS = ["Figtree", "Lexend", "Inter", "Space Grotesk", "DM Sans"];
 
+/** One-click preset swatches for the brand color rows. */
+const BRAND_SWATCHES = ["#F5F3FF", "#FFFFFF", "#B8B2EE", "#7069AA", "#39375B", "#1F1B46", "#060511", "#2EC4B6", "#FF5A5A", "#FFC857"];
+
+/**
+ * Kokoro TTS voice catalog (Kokoro-82M voice IDs). Shown in Creator Brand
+ * only when a script is written; TTS rendering itself lands later.
+ */
+const KOKORO_VOICES = [
+  { group: "American Female", voices: ["af_heart", "af_alloy", "af_aoede", "af_bella", "af_jessica", "af_kore", "af_nicole", "af_nova", "af_river", "af_sarah", "af_sky"] },
+  { group: "American Male", voices: ["am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_michael", "am_onyx", "am_puck"] },
+  { group: "British Female", voices: ["bf_alice", "bf_emma", "bf_isabella", "bf_lily"] },
+  { group: "British Male", voices: ["bm_daniel", "bm_fable", "bm_george", "bm_lewis"] },
+];
+const KOKORO_ACCENTS = { af: "American Female", am: "American Male", bf: "British Female", bm: "British Male" };
+
+/** "af_heart" -> "American Female · Heart (af_heart)". Pure. */
+function voiceLabel(id) {
+  const [accent, name] = String(id).split("_");
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
+  return `${KOKORO_ACCENTS[accent] || accent} · ${cap(name)} (${id})`;
+}
+
 const MAX_REFERENCE_IMAGES = 4;
 const REFERENCE_MAX_DIM = 1024;
 
@@ -369,6 +391,19 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
   const [assetsOpen, setAssetsOpen] = createSignal(false);
   const [videoOpen, setVideoOpen] = createSignal(false);
   const [stylesOpen, setStylesOpen] = createSignal(false);
+  const [scriptOpen, setScriptOpen] = createSignal(false);
+  const [creatorTab, setCreatorTab] = createSignal("audio");
+  const [creatorAudio, setCreatorAudio] = createSignal(null);
+  const [creatorScript, setCreatorScript] = createSignal("");
+  const [creatorVoice, setCreatorVoice] = createSignal("af_heart");
+  const creatorCount = () => (creatorAudio() ? 1 : 0) + (creatorScript().trim() ? 1 : 0);
+  const addCreatorAudio = (event) => {
+    const file = event.currentTarget.files && event.currentTarget.files[0];
+    event.currentTarget.value = "";
+    if (!file || !String(file.type || "").startsWith("audio/")) return;
+    if (creatorAudio()) URL.revokeObjectURL(creatorAudio().url);
+    setCreatorAudio({ name: file.name, url: URL.createObjectURL(file), type: file.type || "", file });
+  };
   const [selectedStyles, setSelectedStyles] = createSignal([]);
   const [brandColors, setBrandColors] = createSignal(["#F5F3FF", "#B8B2EE", "#1F1B46"]);
   const [brandFont, setBrandFont] = createSignal("Figtree");
@@ -426,7 +461,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
         setVideoOpen(true);
         return;
       }
-      onEditRequest({ prompt: text, ratio: format(), elements: selectedElements(), duration: undefined, videos: refs.map(({ name, url, type }) => ({ name, url, type })), assets: assets().map(({ name, type, url }) => ({ name, type, url })), brand: { colors: brandColors(), font: brandFont() }, presets: "auto" });
+      onEditRequest({ prompt: text, ratio: format(), elements: selectedElements(), duration: undefined, videos: refs.map(({ name, url, type }) => ({ name, url, type })), assets: assets().map(({ name, type, url }) => ({ name, type, url })), brand: { colors: brandColors(), font: brandFont() }, presets: "auto", creatorAudio: creatorAudio() ? { name: creatorAudio().name, url: creatorAudio().url, type: creatorAudio().type } : null, creatorScript: creatorScript().trim() || null, creatorVoice: creatorScript().trim() ? creatorVoice() : null });
       return;
     }
     // Motion: reference files travel as images only (data URLs), with no
@@ -513,7 +548,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
         <h1 class={`editor-title ${editorMode()}`}>{editorMode() === "creator" ? "What’s your next video?" : editorMode() === "motion" ? "What’s your next motion graphics?" : "What’s your next edit?"}</h1>
         <div class="editor-chatbox">
           <div class="editor-resource-cards">
-            <div class="editor-resource-button" onClick={() => setVideoOpen(true)}><strong>{editorMode() === "creator" ? <AudioLines /> : editorMode() === "motion" ? <Clapperboard /> : <Scissors />}<small>{editorMode() === "editor" ? `${videos().length}/${EDITOR_VIDEO_MAX}` : videos().length}</small></strong><span class={editorMode() === "motion" ? "resource-single" : ""}>{editorMode() === "creator" ? <>Script/<br />Audio</> : editorMode() === "motion" ? <>Reference</> : <>Video for<br />edit</>}</span></div>
+            <div class="editor-resource-button" onClick={() => editorMode() === "creator" ? setScriptOpen(true) : setVideoOpen(true)}><strong>{editorMode() === "creator" ? <AudioLines /> : editorMode() === "motion" ? <Clapperboard /> : <Scissors />}<small>{editorMode() === "editor" ? `${videos().length}/${EDITOR_VIDEO_MAX}` : editorMode() === "creator" ? creatorCount() : videos().length}</small></strong><span class={editorMode() === "motion" ? "resource-single" : ""}>{editorMode() === "creator" ? <>Script/<br />Audio</> : editorMode() === "motion" ? <>Reference</> : <>Video for<br />edit</>}</span></div>
             <div class="editor-resource-button" onClick={() => setAssetsOpen(true)}><strong><Film /><small>{assets().length}</small></strong><span>Assets</span></div>
             <div class="editor-resource-button" onClick={() => setStylesOpen(true)}><strong><Palette /><small>{brandColors().length}</small></strong><span>Brand</span></div>
           </div>
@@ -597,7 +632,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
         <div class="assets-overlay" onClick={() => setVideoOpen(false)}>
           <div class="assets-modal assets-modal-video" onClick={(event) => event.stopPropagation()}>
             <h2 class="assets-title">{editorMode() === "motion" ? "Add reference" : "Add video for edit"}</h2>
-            <p class="assets-desc">{editorMode() === "motion" ? `Upload up to ${MAX_REFERENCE_IMAGES} images so the agent follows their style, colors and layout. A short video also works as motion reference.` : `Upload ${EDITOR_VIDEO_MIN} video to edit (min ${EDITOR_VIDEO_MIN}, max ${EDITOR_VIDEO_MAX}). It's used as the base footage; assets go separately.`}</p>
+            <p class="assets-desc">{editorMode() === "motion" ? `Upload up to ${MAX_REFERENCE_IMAGES} images so the agent follows their style, colors and layout.` : `Upload ${EDITOR_VIDEO_MIN} video to edit (min ${EDITOR_VIDEO_MIN}, max ${EDITOR_VIDEO_MAX}). It's used as the base footage; assets go separately.`}</p>
             <Show when={videoError()}><p class="assets-desc" role="alert">{videoError()}</p></Show>
             <button class="assets-close" onClick={() => setVideoOpen(false)} aria-label="Close"><X /></button>
             <div class="assets-grid">
@@ -605,10 +640,31 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
                 <label class={`assets-upload assets-video-upload assets-upload-btn ${editorVideoFull() ? "is-disabled" : ""}`} aria-disabled={editorVideoFull()}><span class="assets-upload-label">Upload Video ({videos().length}/{EDITOR_VIDEO_MAX})</span><span class="assets-video-stack"><span class="video-rect video-rect-front" aria-hidden="true" /><span class="video-rect video-rect-back" aria-hidden="true" /><span class="assets-plus"><Plus /></span></span><input type="file" accept="video/*" onChange={addVideoFile} hidden disabled={editorVideoFull()} /></label>
               }>
                 <label class="assets-upload assets-upload-btn"><span class="assets-upload-label">Upload Images</span><span class="assets-plus"><Plus /></span><input type="file" accept="image/*" multiple onChange={addVideoFile} hidden /></label>
-                <label class="assets-upload assets-video-upload assets-upload-btn"><span class="assets-upload-label">Upload Videos</span><span class="assets-video-stack"><span class="video-rect video-rect-front" aria-hidden="true" /><span class="video-rect video-rect-back" aria-hidden="true" /><span class="assets-plus"><Plus /></span></span><input type="file" accept="video/*" multiple onChange={addVideoFile} hidden /></label>
               </Show>
               <Show when={videos().length > 0}><div class="assets-previews assets-previews-video">{videos().map((v) => <div class="assets-video-tile">{(v.type || "").startsWith("image/") ? <img class="assets-preview-media" src={v.url} alt={v.name} /> : <video class="assets-preview-media" src={v.url} controls />}<button class="asset-remove" onClick={() => removeVideo(v)} aria-label="Remove"><X /></button></div>)}</div></Show>
             </div>
+          </div>
+        </div>
+      </Show>
+      <Show when={scriptOpen()}>
+        <div class="assets-overlay" onClick={() => setScriptOpen(false)}>
+          <div class="assets-modal assets-modal-video" onClick={(event) => event.stopPropagation()}>
+            <h2 class="assets-title">Add script / audio</h2>
+            <p class="assets-desc">Upload a single audio file or write the script for your video.</p>
+            <button class="assets-close" onClick={() => setScriptOpen(false)} aria-label="Close"><X /></button>
+            <div class="script-tabs" role="tablist" aria-label="Script or audio">
+              <button type="button" role="tab" aria-selected={creatorTab() === "audio"} class={`script-tab ${creatorTab() === "audio" ? "selected" : ""}`} onClick={() => setCreatorTab("audio")}>Upload audio</button>
+              <button type="button" role="tab" aria-selected={creatorTab() === "script"} class={`script-tab ${creatorTab() === "script" ? "selected" : ""}`} onClick={() => setCreatorTab("script")}>Write script</button>
+            </div>
+            <Show when={creatorTab() === "audio"}>
+              <div class="assets-grid">
+                <label class="assets-upload assets-upload-btn"><span class="assets-upload-label">Upload Audio ({creatorAudio() ? "1/1" : "0/1"})</span><span class="assets-plus"><Plus /></span><input type="file" accept="audio/*" onChange={addCreatorAudio} hidden /></label>
+                <Show when={creatorAudio()}><div class="assets-video-tile"><audio class="assets-preview-media" src={creatorAudio().url} controls /><span class="asset-name">{creatorAudio().name}</span><button class="asset-remove" onClick={() => { if (creatorAudio()) URL.revokeObjectURL(creatorAudio().url); setCreatorAudio(null); }} aria-label="Remove"><X /></button></div></Show>
+              </div>
+            </Show>
+            <Show when={creatorTab() === "script"}>
+              <textarea class="script-area" value={creatorScript()} onInput={(e) => setCreatorScript(e.currentTarget.value)} placeholder="Write your script here…" aria-label="Video script" />
+            </Show>
           </div>
         </div>
       </Show>
@@ -619,8 +675,12 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
             <p class="assets-desc">Colors and font for captions, lower thirds, and motion graphics.</p>
             <button class="assets-close" onClick={() => setStylesOpen(false)} aria-label="Close"><X /></button>
             <div class="brand-grid">
-              {brandColors().map((c, i) => <label class="brand-color">Color {i + 1}<span class="brand-row"><input type="color" value={c} onInput={(e) => setBrandColor(i, e.currentTarget.value)} /><input type="text" value={c} onInput={(e) => setBrandColor(i, e.currentTarget.value)} /></span></label>)}
+              {brandColors().map((c, i) => <label class="brand-color">Color {i + 1}<span class="brand-row"><input type="color" value={c} onChange={(e) => setBrandColor(i, e.currentTarget.value)} aria-label={`Pick color ${i + 1}`} /><input type="text" value={c} onInput={(e) => setBrandColor(i, e.currentTarget.value)} aria-label={`Color ${i + 1} hex value`} /></span><span class="brand-swatches">{BRAND_SWATCHES.map((s) => <button type="button" class={`brand-swatch ${String(s).toLowerCase() === String(c).toLowerCase() ? "selected" : ""}`} style={{ background: s }} title={s} aria-label={`Use ${s} for color ${i + 1}`} onClick={() => setBrandColor(i, s)} />)}</span></label>)}
               <label class="brand-color">Font<select value={brandFont()} onChange={(e) => setBrandFont(e.currentTarget.value)}>{BRAND_FONTS.map((f) => <option value={f}>{f}</option>)}</select></label>
+              <Show when={editorMode() === "creator" && creatorScript().trim()}>
+                <label class="brand-color">Voice<select value={creatorVoice()} onChange={(e) => setCreatorVoice(e.currentTarget.value)}>{KOKORO_VOICES.map((g) => <optgroup label={g.group}>{g.voices.map((v) => <option value={v}>{voiceLabel(v)}</option>)}</optgroup>)}</select></label>
+                <p class="assets-desc">Kokoro TTS voice that reads your script.</p>
+              </Show>
             </div>
           </div>
         </div>
