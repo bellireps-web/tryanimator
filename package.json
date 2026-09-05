@@ -9,11 +9,15 @@
     "preview": "vite preview --port 3000"
   },
   "dependencies": {
+    "@clerk/clerk-js": "^6.31.0",
+    "@clerk/react": "^6.15.1",
     "@kobalte/core": "^0.13.13",
     "@solid-primitives/intersection-observer": "^2.2.5",
     "gsap": "^3.15.0",
     "lucide-solid": "^1.37.0",
     "mediabunny": "^1.55.6",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "solid-js": "^1.8.22"
   },
   "devDependencies": {

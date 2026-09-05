@@ -9,3 +9,7 @@ rust/target/
 hf-calm-ocean/snapshots/
 hf-calm-ocean/assets/source.mp4
 hf-calm-ocean/calm-ocean-recut.mp4
+hf-calm-ocean/
+
+worker/.dev.vars
+**/.dev.vars

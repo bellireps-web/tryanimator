@@ -10,6 +10,7 @@ import { buildMotionPlanInput, createMotionJob } from "./motion/jobs.js";
 import { createBrowserAdapters } from "./motion/browser.js";
 import { buildCompRecord, getMotionProjects } from "./motion/projects.js";
 import { EDITOR_ELEMENTS } from "./motion/hyperframesPresets.js";
+import { mountAuthIsland, hasClerkKey } from "./auth/reactAuth.js";
 
 const EDITOR_VIDEO_MIN = 1;
 const EDITOR_VIDEO_MAX = 1;
@@ -122,6 +123,17 @@ function LogoIcon() {
 }
 function EnterIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 10 4 15l5 5" /><path d="M20 4v7a4 4 0 0 1-4 4H4" /></svg>;
+}
+
+/** React-powered Clerk controls mounted into a Solid-owned slot. */
+function AuthIsland() {
+  let slot = null;
+  let unmount = () => {};
+  onMount(() => {
+    unmount = mountAuthIsland(slot);
+  });
+  onCleanup(() => unmount());
+  return <div class="landing-auth-slot" ref={(el) => { slot = el; }} />;
 }
 
 function useReveal() {
@@ -333,8 +345,8 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
   const toggleStyle = (label) => setSelectedStyles((current) => current.includes(label) ? current.filter((item) => item !== label) : [...current, label]);
   const elements = EDITOR_ELEMENTS;
 
-  const comingSoonTitle = () => active() === "resources" ? "Resources" : active() === "community" ? "Community" : active() === "affiliates" ? "Affiliates" : "";
-  const isComingSoon = () => ["resources", "community", "affiliates"].includes(active());
+  const comingSoonTitle = () => active() === "templates" ? "Templates" : active() === "resources" ? "Resources" : active() === "community" ? "Community" : active() === "affiliates" ? "Affiliates" : "";
+  const isComingSoon = () => ["templates", "resources", "community", "affiliates"].includes(active());
   const toggleMenu = (menu) => setOpenMenu(openMenu() === menu ? null : menu);
   const toggleElement = (element) => setSelectedElements((current) => current.includes(element) ? current.filter((item) => item !== element) : [...current, element]);
   const closeMenus = (event) => {
@@ -441,7 +453,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
           <button class={`editor-nav-item ${active() === "home" ? "active" : ""}`} onClick={() => { setActive("home"); setShowProjects(false); }}><Home /><span>Home</span></button>
           <button class={`editor-nav-item ${active() === "projects" ? "active" : ""}`} onClick={() => { setActive("projects"); setShowProjects(true); }}><Folder /><span>Projects</span></button>
           <div class="editor-section-title editor-assets-title">Assets</div>
-          <button class={`editor-nav-item ${active() === "templates" ? "active" : ""}`} onClick={() => { setActive("templates"); setShowProjects(false); }}><LayoutTemplate /><span>Templates</span></button>
+          <button class={`editor-nav-item ${active() === "templates" ? "active" : ""}`} onClick={() => { setActive("templates"); setShowProjects(false); }}><LayoutTemplate /><span>Templates</span><span class="editor-soon-lock" aria-label="Coming soon"><Lock /></span></button>
           <button class={`editor-nav-item ${active() === "resources" ? "active" : ""}`} onClick={() => { setActive("resources"); setShowProjects(false); }}><BookOpen /><span>Resources</span><span class="editor-soon-lock" aria-label="Coming soon"><Lock /></span></button>
           <button class={`editor-nav-item ${active() === "community" ? "active" : ""}`} onClick={() => { setActive("community"); setShowProjects(false); }}><Users /><span>Community</span><span class="editor-soon-lock" aria-label="Coming soon"><Lock /></span></button>
           <div class="editor-section-title editor-user-title">User</div>
@@ -592,7 +604,8 @@ export default function App() {
   const [billing, setBilling] = createSignal("monthly");
   const [landingScrolled, setLandingScrolled] = createSignal(false);
   const [caCopied, setCaCopied] = createSignal(false);
-  const contractAddress = "0xb528a38ea684ed26ea0eee9de5d222da6228c10d";
+  // TODO: pegar aquí el CA real cuando esté (el clic ya copia este valor).
+  const contractAddress = "Coming soon";
   const copyCA = () => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(contractAddress).catch(() => {});
@@ -601,7 +614,7 @@ export default function App() {
     setTimeout(() => setCaCopied(false), 1500);
   };
   const navigate = (nextPage) => {
-    window.location.hash = nextPage === "editor" ? "editor" : "top";
+    window.location.hash = nextPage === "editor" ? "editor" : nextPage === "onboarding" ? "onboarding" : "top";
     if (nextPage === "editor") setEditorProjects(false);
     setPage(nextPage);
   };
@@ -609,9 +622,16 @@ export default function App() {
     const el = document.querySelector(selector);
     if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 110, behavior: "smooth" });
   };
-  const handleHashChange = () => setPage(window.location.hash === "#editor" ? "editor" : "landing");
+  const handleHashChange = () => {
+    const hash = window.location.hash;
+    // Clerk owns "#/..." step hashes on the Get-started screen: don't route on them.
+    if (hash.startsWith("#/")) return;
+    setPage(hash === "#editor" ? "editor" : hash === "#onboarding" ? "onboarding" : "landing");
+  };
   onMount(() => {
-    if (window.location.hash === "#editor") setPage("editor");
+    const hash = window.location.hash;
+    if (hash === "#editor") setPage("editor");
+    else if (hash === "#onboarding" || hash.startsWith("#/")) setPage("onboarding");
     window.addEventListener("hashchange", handleHashChange);
     const updateLandingScroll = () => setLandingScrolled(window.scrollY > 24);
     updateLandingScroll();
@@ -623,7 +643,7 @@ export default function App() {
   });
 
   // @codebuff TEMP-FOR-TESTING: onboarding always shows on Get started
-  const handleGetStarted = () => setPage("onboarding");
+  const handleGetStarted = () => navigate("onboarding");
   const [motionJob, setMotionJob] = createSignal(null);
   const [motionSnap, setMotionSnap] = createSignal(null);
   const startJob = (j) => {
@@ -718,7 +738,11 @@ export default function App() {
               <a href="#pricing" onClick={(event) => { event.preventDefault(); scrollToSection(".landing-pricing"); }}>Pricing</a>
               <a href="#token" onClick={(event) => { event.preventDefault(); scrollToSection(".landing-token"); }}>Animator Stock</a>
             </nav>
+            <Show when={hasClerkKey()} fallback={
             <a class="landing-auth" href="#editor" onClick={(event) => { event.preventDefault(); navigate("editor"); }}>Sign Up/Log In</a>
+            }>
+              <AuthIsland />
+            </Show>
           </div>
         </header>
         <main id="top" class="landing-main">
