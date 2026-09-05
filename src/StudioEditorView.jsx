@@ -453,7 +453,7 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
 
       <main class="st-main" aria-label="Vista previa">
         <div class="st-main-top">
-          <button class="st-export" onClick={() => { if (videoUrl()) downloadMotion(); else onExport(); }}>{videoUrl() ? "Descargar MP4" : "Export"}</button>
+          {/* Export oculto de momento (navegaba al editor en vez de exportar) */}
         </div>
         <button class="st-capture" onClick={captureFrame} aria-label="Capturar frame actual"><Plus /><span>Capturar Frame</span></button>
         <div class="st-stage" ref={(el) => { previewBox = el; }}>
