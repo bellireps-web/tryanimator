@@ -5,4 +5,7 @@ dist/
 rust/target/
 .env
 .env.*
-**/.dev.vars
+**/.dev.vars.thumbnails/
+hf-calm-ocean/snapshots/
+hf-calm-ocean/assets/source.mp4
+hf-calm-ocean/calm-ocean-recut.mp4
