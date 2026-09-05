@@ -316,9 +316,9 @@ export default function StudioEditorView({ job, onNewVideo, onExport, onJobDone,
   const send = () => {
     const text = draft().trim();
     if (!text || patching()) return;
-    setMsgs((m) => [...m, { kind: "user", text }]);
+    // Chat IA pausado: al dar Enter no se envía nada al agente.
+    setMsgs((m) => [...m, { kind: "user", text }, { kind: "ai", text: "Disponible en 24 horas." }]);
     setDraft("");
-    if (mJob()) sendMotionPatch(text);
   };
   const addContext = () => {
     const mp = motionPlan();
