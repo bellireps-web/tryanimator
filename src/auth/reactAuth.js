@@ -9,7 +9,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ClerkProvider, SignIn, SignUp, UserButton, useAuth } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, UserButton, useAuth, useClerk } from "@clerk/react";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -132,6 +132,72 @@ export function mountSignInPage(el) {
       { publishableKey: PUBLISHABLE_KEY },
       React.createElement(SessionGate, null),
       React.createElement(AuthForm, null),
+    ),
+  );
+  return () => {
+    try {
+      root.unmount();
+    } catch {
+      // Already unmounted (HMR / double cleanup): nothing to release.
+    }
+  };
+}
+
+/**
+ * Settings popover auth row: "Log out" when signed in (signs out via
+ * Clerk, then onLogout), "Log in" when signed out (onLogin navigates to
+ * the sign-in screen). Without a Clerk key it degrades to Log in only.
+ */
+function SettingsAuth({ onLogin, onLogout }) {
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+  if (isSignedIn === undefined) return null;
+  if (isSignedIn) {
+    return React.createElement(
+      "button",
+      {
+        type: "button",
+        className: "settings-item",
+        onClick: () => {
+          try {
+            const done = signOut();
+            if (done && typeof done.then === "function") done.then(onLogout, onLogout);
+            else onLogout();
+          } catch {
+            onLogout();
+          }
+        },
+      },
+      "Log out",
+    );
+  }
+  return React.createElement(
+    "button",
+    { type: "button", className: "settings-item", onClick: onLogin },
+    "Log in",
+  );
+}
+
+export function mountSettingsAuth(el, { onLogin, onLogout }) {
+  if (!el) return () => {};
+  if (!hasClerkKey()) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "settings-item";
+    btn.textContent = "Log in";
+    btn.addEventListener("click", onLogin);
+    el.appendChild(btn);
+    return () => {
+      btn.removeEventListener("click", onLogin);
+      btn.remove();
+    };
+  }
+  const root = createRoot(el);
+  root.render(
+    React.createElement(
+      ClerkProvider,
+      { publishableKey: PUBLISHABLE_KEY },
+      React.createElement(SettingsAuth, { onLogin, onLogout }),
     ),
   );
   return () => {

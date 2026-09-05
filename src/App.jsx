@@ -10,7 +10,7 @@ import { buildMotionPlanInput, createMotionJob } from "./motion/jobs.js";
 import { createBrowserAdapters } from "./motion/browser.js";
 import { buildCompRecord, getMotionProjects } from "./motion/projects.js";
 import { EDITOR_ELEMENTS } from "./motion/hyperframesPresets.js";
-import { mountAuthIsland, hasClerkKey } from "./auth/reactAuth.js";
+import { mountAuthIsland, hasClerkKey, mountSettingsAuth } from "./auth/reactAuth.js";
 
 const EDITOR_VIDEO_MIN = 1;
 const EDITOR_VIDEO_MAX = 1;
@@ -134,6 +134,36 @@ function AuthIsland() {
   });
   onCleanup(() => unmount());
   return <div class="landing-auth-slot" ref={(el) => { slot = el; }} />;
+}
+
+/** Floating Settings window: billing shortcuts (paused) + Clerk session. */
+function SettingsPop({ onClose }) {
+  let slot = null;
+  let unmount = () => {};
+  const [notice, setNotice] = createSignal("");
+  const goLogin = () => {
+    onClose();
+    window.location.hash = "onboarding";
+  };
+  const goLanding = () => {
+    onClose();
+    window.location.hash = "top";
+  };
+  onMount(() => {
+    unmount = mountSettingsAuth(slot, { onLogin: goLogin, onLogout: goLanding });
+  });
+  onCleanup(() => unmount());
+  return (
+    <div class="settings-overlay" onClick={onClose}>
+      <div class="settings-pop" role="dialog" aria-label="Settings" onClick={(event) => event.stopPropagation()}>
+        <p class="settings-title">Settings</p>
+        <button type="button" class="settings-item" onClick={() => setNotice("Disponible en 24 horas.")}>Upgrade to Plus</button>
+        <button type="button" class="settings-item" onClick={() => setNotice("Disponible en 24 horas.")}>Manage subscription</button>
+        <div class="settings-auth" ref={(el) => { slot = el; }} />
+        <Show when={notice()}><p class="settings-notice" role="status">{notice()}</p></Show>
+      </div>
+    </div>
+  );
 }
 
 function useReveal() {
@@ -318,6 +348,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
   const [prompt, setPrompt] = createSignal("");
   const [active, setActive] = createSignal(startOnProjects ? "projects" : "home");
   const [sidebarVisible, setSidebarVisible] = createSignal(true);
+  const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [editorMode, setEditorMode] = createSignal("editor");
   const [showProjects, setShowProjects] = createSignal(!!startOnProjects);
   const [openMenu, setOpenMenu] = createSignal(null);
@@ -462,7 +493,7 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
           <button class={`editor-nav-item ${active() === "community" ? "active" : ""}`} onClick={() => { setActive("community"); setShowProjects(false); }}><Users /><span>Community</span><span class="editor-soon-lock" aria-label="Coming soon"><Lock /></span></button>
           <div class="editor-section-title editor-user-title">User</div>
           <button class={`editor-nav-item ${active() === "affiliates" ? "active" : ""}`} onClick={() => { setActive("affiliates"); setShowProjects(false); }}><CircleDollarSign /><span>Affiliates</span><span class="editor-soon-lock" aria-label="Coming soon"><Lock /></span></button>
-          <button class="editor-nav-item editor-settings" onClick={() => { setActive("settings"); setShowProjects(false); }}><Settings /><span>Settings</span></button>
+          <button class="editor-nav-item editor-settings" onClick={() => setSettingsOpen(true)}><Settings /><span>Settings</span></button>
         </div>
       </aside>
       <button class="editor-hide" onClick={() => setSidebarVisible(!sidebarVisible())} aria-label={sidebarVisible() ? "Hide sidebar" : "Show sidebar"}>{sidebarVisible() ? <PanelLeftClose /> : <PanelLeftOpen />}</button>
@@ -594,6 +625,9 @@ function EditorView({ onBack, onEditRequest, onOpenComp, startOnProjects }) {
             </div>
           </div>
         </div>
+      </Show>
+      <Show when={settingsOpen()}>
+        <SettingsPop onClose={() => setSettingsOpen(false)} />
       </Show>
     </div>
   );
