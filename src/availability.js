@@ -5,7 +5,7 @@
  */
 
 // Fixed launch moment (UTC). Same instant for everyone, worldwide.
-export const AVAILABLE_AT = Date.parse("2026-09-06T23:25:55.000Z");
+export const AVAILABLE_AT = Date.parse("2026-09-07T19:25:55.000Z");
 
 /** Milliseconds left until launch (never negative). Pure. */
 export function remainingMs(now = Date.now()) {
